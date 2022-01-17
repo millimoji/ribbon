@@ -30,3 +30,14 @@
 *.exe
 *.out
 *.app
+
+# vs auto generated
+.vs/
+
+# build folders
+bin/
+obj/
+
+# specific
+tools/script/output.txt
+
