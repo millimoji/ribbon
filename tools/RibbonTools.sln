@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.32002.261
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebCrawler", "WebCrawler\WebCrawler.csproj", "{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {85A174D6-21BE-4EB6-92DA-6854C67C8F96}
+	EndGlobalSection
+EndGlobal
