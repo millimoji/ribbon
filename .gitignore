@@ -1,3 +1,5 @@
+mygitpat.txt
+
 # Prerequisites
 *.d
 
@@ -40,4 +42,3 @@ obj/
 
 # specific
 tools/script/output.txt
-
