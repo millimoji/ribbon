@@ -10,7 +10,7 @@ namespace Ribbon.WebCrawler
     {
         // constants
         public const string mecabExe = "c:\\Program Files (x86)\\MeCab\\bin\\mecab.exe";
-        public const string workingFolder = "e:\\lmdata\\";
+        public const string workingFolder = "c:\\lmworking\\";
 
         static void Main(string[] args)
         {
@@ -25,7 +25,8 @@ namespace Ribbon.WebCrawler
             public HashSet<string> referenceUrls = new HashSet<string>();
         }
 
-        const int parallelDownload = 20;
+        const int saveInternvalHour = 6;
+        const int parallelDownload = 10;
 
         MorphAnalyzer m_morphAnalyzer = new MorphAnalyzer(workingFolder);
         NGramStore m_nGraphStore = new NGramStore(workingFolder);
@@ -112,7 +113,7 @@ namespace Ribbon.WebCrawler
                     m_nGraphStore.AddFromWordArray(morphList);
                 }
 
-                if (lastSavedHour != DateTime.Now.Hour)
+                if ((lastSavedHour + saveInternvalHour) <= DateTime.Now.Hour)
                 {
                     m_nGraphStore.SaveFile();
                     lastSavedHour = DateTime.Now.Hour;
