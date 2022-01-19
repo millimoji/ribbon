@@ -34,11 +34,15 @@ namespace Ribbon.WebCrawler
         const string n5gramFileName = "n5gram.txt";
         const string n6gramFileName = "n6gram.txt";
         const string n7gramFileName = "n7gram.txt";
-        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName };
+        const string topicModelFileName = "topicmodel.txt";
+        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName, topicModelFileName };
         const string doHalfFileName = "dohalf";
         const string old3prefix = "old3-";
         const string old2prefix = "old2-";
         const string old1prefix = "old-";
+
+        TopicModelHandler m_topicModel;
+
 
         string m_workDir;
         public string DateTimeString()
@@ -49,6 +53,7 @@ namespace Ribbon.WebCrawler
         public NGramStore(string workDir)
         {
             m_workDir = workDir;
+            m_topicModel = new TopicModelHandler();
         }
 
         public void SlideDataFile()
@@ -98,6 +103,8 @@ namespace Ribbon.WebCrawler
                     }
                 }
             }
+
+            m_topicModel.SaveToFile(m_workDir + topicModelFileName, (int id) => this.WordList[id]);
         }
 
         public void LoadFromFile()
@@ -147,9 +154,11 @@ namespace Ribbon.WebCrawler
                 }
                 catch (Exception) { }
             }
+
+            this.m_topicModel.LoadFromFile(this.m_workDir + topicModelFileName, (string word) => this.WordToWordId(word, false));
         }
 
-        public void AddFromWordArray(List<string> arrayOfWord)
+        public void AddFromWordArray(List<string> arrayOfWord) // sentence
         {
             int[] hashKeyList = new int[arrayOfWord.Count + 2 + 5];
 
@@ -179,9 +188,11 @@ namespace Ribbon.WebCrawler
                 if (remained >= 2) { AddNgram(2, shiftKeyList, 1); }
                 if (remained >= 1) { AddNgram(1, shiftKeyList, 1); }
             }
+
+            m_topicModel.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
         }
 
-        int WordToWordId(string word)
+        int WordToWordId(string word, bool createNew = true)
         {
             int wordId;
             lock (thisLock)
@@ -192,19 +203,25 @@ namespace Ribbon.WebCrawler
                 }
                 if (!WordHash.TryGetValue(word, out wordId))
                 {
-                    wordId = WordList.Count;
-                    WordList.Add(word);
-                    WordHash.Add(word, wordId);
-                }
-                ////
-                if (System.Diagnostics.Debugger.IsAttached)
-                {
-                    if (WordList[wordId] != word)
+                    if (createNew)
                     {
-                        System.Diagnostics.Debugger.Break();
+                        wordId = WordList.Count;
+                        WordList.Add(word);
+                        WordHash.Add(word, wordId);
+
+                        if (System.Diagnostics.Debugger.IsAttached)
+                        {
+                            if (WordList[wordId] != word)
+                            {
+                                System.Diagnostics.Debugger.Break();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return -1;
                     }
                 }
-                ////
             }
             return wordId;
         }

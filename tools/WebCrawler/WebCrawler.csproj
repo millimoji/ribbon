@@ -50,6 +50,7 @@
     <Compile Include="NGramHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TopicModelHandler.cs" />
     <Compile Include="WebContentAccessor.cs" />
     <Compile Include="WinApiBridge.cs" />
   </ItemGroup>
