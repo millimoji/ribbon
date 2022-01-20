@@ -12,11 +12,17 @@ namespace Ribbon.WebCrawler
     {
         private double[] topicProbs; // log
         private Dictionary<int, double[]> wordProbs; // log
+        private System.Random random = new System.Random();
 
         public TopicModelState()
         {
             this.topicProbs = this.CreateLoggedRandomArray(TopicModelHandler.TopicCount);
             this.wordProbs = new Dictionary<int, double[]>();
+        }
+
+        public int GetWordCount()
+        {
+            return this.wordProbs.Count;
         }
 
         public void SaveToFile(string fileName, Func<int, string> id2word)
@@ -54,7 +60,7 @@ namespace Ribbon.WebCrawler
                 double sum = 0.0;
                 TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) =>
                 {
-                    var value = (idx < (headerLine.Length - 1)) ? Math.Exp(Convert.ToDouble(headerLine[idx + 1])) : (-Single.MaxValue);
+                    var value = (idx < (headerLine.Length - 1)) ? Math.Exp(Convert.ToDouble(headerLine[idx + 1])) : this.GetSmallRandomNumber();
                     sum += value;
                     return value;
                 });
@@ -70,7 +76,7 @@ namespace Ribbon.WebCrawler
                     }
                     var singleWordProbs = this.GetProbsForWord(wordId);
                     TopicModelHandler.DoubleForEach(singleWordProbs, (double x, int idx) =>
-                        (idx < (wordLine.Length - 1)) ? Convert.ToDouble(wordLine[idx + 1]): Math.Log(-Single.MaxValue));
+                        (idx < (wordLine.Length - 1)) ? Convert.ToDouble(wordLine[idx + 1]): Math.Log(this.GetSmallRandomNumber()));
                 }
                 this.NormalizeWordProbs();
             }
@@ -79,12 +85,11 @@ namespace Ribbon.WebCrawler
 
         private double[] CreateLoggedRandomArray(int size)
         {
-            var rnd = new System.Random();
             var array = new double[size];
             var sum = 0.0;
             TopicModelHandler.DoubleForEach(array, (double x, int idx) =>
             {
-                var value = (double)rnd.Next(1, 0x10000) / (double)0x10000;
+                var value = this.GetRandomNumber();
                 sum += value;
                 return value;
             });
@@ -120,9 +125,7 @@ namespace Ribbon.WebCrawler
                 return probLine;
             }
             probLine = new double[TopicModelHandler.TopicCount];
-            var rnd = new System.Random();
-            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) =>
-                Math.Log((double)rnd.Next(1, 0x10000) / Single.MaxValue));
+            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => Math.Log(this.GetSmallRandomNumber()));
             this.wordProbs.Add(index, probLine);
             return probLine;
         }
@@ -170,6 +173,7 @@ namespace Ribbon.WebCrawler
                     TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
                     {
                         var value = Math.Exp(x) * keepRate + srcArray[idx] * nextRate;
+                        value = Math.Max(value, this.GetSmallRandomNumber());
                         sums[idx] += value;
                         return value;
                     });
@@ -183,6 +187,7 @@ namespace Ribbon.WebCrawler
                         TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
                         {
                             var value = Math.Exp(x) * keepRate;
+                            value = Math.Max(value, this.GetSmallRandomNumber());
                             sums[idx] += value;
                             return value;
                         });
@@ -194,6 +199,7 @@ namespace Ribbon.WebCrawler
                         TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
                         {
                             var value = srcArray[idx] * nextRate;
+                            value = Math.Max(value, this.GetSmallRandomNumber());
                             sums[idx] += value;
                             return value;
                         });
@@ -239,6 +245,16 @@ namespace Ribbon.WebCrawler
             {
                 TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => Math.Log(x / sums[idx]));
             }
+        }
+
+        private double GetRandomNumber()
+        {
+            return (double)random.Next(0x10, 0x10000) / (double)0x10000;
+        }
+
+        private double GetSmallRandomNumber()
+        {
+            return (double)random.Next(0x10, 0x10000) / Single.MaxValue;
         }
     }
 
@@ -304,11 +320,14 @@ namespace Ribbon.WebCrawler
     public class TopicModelHandler
     {
         public const int TopicCount = 255;
-        public const double updateMergeRate = 0.9;
-        public const double updateWordCount = 200000;
+        public const double updateMergeRate = 0.8; // 0.9;
+        public const double updateWordCount = 10000; // 200000;
+        public const int perplexHistMax = 100;
+        public const int wordCountRequirement = 4;
 
         private TopicModelState baseState;
         private TopicModelNext nextState;
+        private Queue<double> ppHist = new Queue<double>();
 
         double currentLikelihood = 0.0;
         double currentWordCount = 0.0;
@@ -333,7 +352,7 @@ namespace Ribbon.WebCrawler
         public void LearnDocument(List<string> document, Func<string, int> word2id)
         {
             var listId = this.WordArrayToIntArray(document, word2id);
-            if (listId.Count <= 1)
+            if (listId.Count < wordCountRequirement)
             {
                 return; // ignore
             }
@@ -358,7 +377,8 @@ namespace Ribbon.WebCrawler
         private void ApplyNextState()
         {
             var pp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
-            Console.WriteLine($"[TopicMode] Likelihood:{this.currentLikelihood}, perplex:{pp}");
+            this.ppHist.Enqueue(pp);
+            Console.WriteLine($"[TopicMode] pp:{pp}, word:{this.baseState.GetWordCount()} pp-ave:{this.GetPerplexyAvarage()}");
 
             this.nextState.Normalize();
             this.baseState.MergeNext(this.nextState, updateMergeRate);
@@ -374,7 +394,7 @@ namespace Ribbon.WebCrawler
         }
 
         private Regex matchNoReading = new Regex(@",\*,\*$");
-        private Regex excludedPos = new Regex(@"(,名詞,数,|,助詞,|,助動詞,|,接頭詞,|,記号,|,非自立,|,接尾,|,副詞可能,)");
+        private Regex excludedPos = new Regex(@"(,名詞,数,|,助詞,|,助動詞,|,接頭詞,|,記号,|,非自立,|,接尾,|,副詞可能,|,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,)");
         private Regex excludedWord = new Regex(@"(,動詞,自立,\*,\*,サ変・|,動詞,自立,\*,\*,カ変・)");
 
         private bool isTargetWord(string word)
@@ -384,6 +404,15 @@ namespace Ribbon.WebCrawler
                 this.excludedPos.IsMatch(word) ||
                 this.excludedWord.IsMatch(word) ?
                 false : true;
+        }
+
+        private double GetPerplexyAvarage()
+        {
+            while (this.ppHist.Count > perplexHistMax)
+            {
+                this.ppHist.Dequeue();
+            }
+            return this.ppHist.Sum() / (double)(this.ppHist.Count());
         }
 
         public static void DoubleForEach(double [] dst, Func<double, int, double> operation)
