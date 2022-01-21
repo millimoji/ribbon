@@ -178,8 +178,7 @@ namespace Ribbon.WebCrawler
                 return probLine;
             }
             probLine = new double[TopicModelHandler.TopicCount];
-            var newValue = Math.Log(1.0 / Single.MaxValue);
-            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => this.GetSmallShuffled(newValue));
+            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => this.GetSmallRandomNumber());
             this.wordProbs.Add(index, probLine);
             return probLine;
         }
@@ -377,7 +376,7 @@ namespace Ribbon.WebCrawler
     public class TopicModelHandler
     {
         public const int TopicCount = 63; // 255;
-        public const double updateMergeRate = 0.98; // 0.9;
+        public const double updateMergeRate = 0.9; // 0.9;
         public const double updateWordCount = 10000;
         public const int perplexHistMax = 100;
         public const int wordCountRequirement = 4;
