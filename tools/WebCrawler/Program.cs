@@ -113,7 +113,7 @@ namespace Ribbon.WebCrawler
                     m_nGraphStore.AddFromWordArray(morphList);
                 }
 
-                if ((lastSavedHour + saveInternvalHour) <= DateTime.Now.Hour)
+                if (((lastSavedHour + saveInternvalHour) % 24) == DateTime.Now.Hour)
                 {
                     m_nGraphStore.SaveFile();
                     lastSavedHour = DateTime.Now.Hour;

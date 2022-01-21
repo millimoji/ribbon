@@ -25,7 +25,7 @@ namespace Ribbon.WebCrawler
             return this.wordProbs.Count;
         }
 
-        public void SaveToFile(string fileName, Func<int, string> id2word)
+        public void SaveToFile(string fileName, string summaryFilename, Func<int, string> id2word)
         {
             using (StreamWriter fileStream = new StreamWriter(fileName, false, Encoding.Unicode))
             {
@@ -40,9 +40,15 @@ namespace Ribbon.WebCrawler
                     fileStream.WriteLine(outputLine);
                 }
             }
+
+
+            {
+                var summarizer = new JsonSummarizer();
+                summarizer.Serialize(summaryFilename, this.wordProbs, id2word);
+            }
         }
 
-        public bool LoadFromFile(string fileName, Func<string, int> word2id)
+        public bool LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word)
         {
             if (!File.Exists(fileName))
             {
@@ -69,6 +75,10 @@ namespace Ribbon.WebCrawler
                 while ((line = fileStream.ReadLine()) != null)
                 {
                     var wordLine = line.Split('\t');
+                    if (!TopicModelHandler.isTargetWord(wordLine[0]))
+                    {
+                        continue;
+                    }
                     var wordId = word2id(wordLine[0]);
                     if (wordId < 0)
                     {
@@ -80,6 +90,7 @@ namespace Ribbon.WebCrawler
                 }
                 this.NormalizeWordProbs();
             }
+
             return true;
         }
 
@@ -339,14 +350,14 @@ namespace Ribbon.WebCrawler
             this.nextState = new TopicModelNext();
         }
 
-        public void LoadFromFile(string fileName, Func<string, int> word2id)
+        public void LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word)
         {
-            this.baseState.LoadFromFile(fileName, word2id);
+            this.baseState.LoadFromFile(fileName, word2id, id2word);
         }
 
-        public void SaveToFile(string fileName, Func<int, string> id2Word)
+        public void SaveToFile(string fileName, string summaryFilename, Func<int, string> id2Word)
         {
-            this.baseState.SaveToFile(fileName, id2Word);
+            this.baseState.SaveToFile(fileName, summaryFilename, id2Word);
         }
 
         public void LearnDocument(List<string> document, Func<string, int> word2id)
@@ -390,19 +401,19 @@ namespace Ribbon.WebCrawler
 
         private List<int> WordArrayToIntArray(List<string> document, Func<string, int> word2id)
         {
-            return document.Select(word => (this.isTargetWord(word) ? word2id(word) : -1)).Where(wordId => wordId >= 0).ToList();
+            return document.Select(word => (TopicModelHandler.isTargetWord(word) ? word2id(word) : -1)).Where(wordId => wordId >= 0).ToList();
         }
 
-        private Regex matchNoReading = new Regex(@",\*,\*$");
-        private Regex excludedPos = new Regex(@"(,名詞,数,|,助詞,|,助動詞,|,接頭詞,|,記号,|,非自立,|,接尾,|,副詞可能,|,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,)");
-        private Regex excludedWord = new Regex(@"(,動詞,自立,\*,\*,サ変・|,動詞,自立,\*,\*,カ変・)");
+        private static Regex matchNoReading = new Regex(@",\*,\*$");
+        private static Regex excludedPos = new Regex(@"(,名詞,数,|,助詞,|,助動詞,|,接頭詞,|,記号,|,非自立,|,接尾,|,副詞可能,|,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,)");
+        private static Regex excludedWord = new Regex(@"(,動詞,自立,\*,\*,サ変・|,動詞,自立,\*,\*,カ変・)");
 
-        private bool isTargetWord(string word)
+        public static bool isTargetWord(string word)
         {
             return
-                this.matchNoReading.IsMatch(word) ||
-                this.excludedPos.IsMatch(word) ||
-                this.excludedWord.IsMatch(word) ?
+                TopicModelHandler.matchNoReading.IsMatch(word) ||
+                TopicModelHandler.excludedPos.IsMatch(word) ||
+                TopicModelHandler.excludedWord.IsMatch(word) ?
                 false : true;
         }
 

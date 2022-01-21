@@ -35,7 +35,8 @@ namespace Ribbon.WebCrawler
         const string n6gramFileName = "n6gram.txt";
         const string n7gramFileName = "n7gram.txt";
         const string topicModelFileName = "topicmodel.txt";
-        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName, topicModelFileName };
+        const string topicModelSummaryFilename = "topicmodel-summary.json";
+        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName, topicModelFileName, topicModelSummaryFilename };
         const string doHalfFileName = "dohalf";
         const string old3prefix = "old3-";
         const string old2prefix = "old2-";
@@ -104,7 +105,7 @@ namespace Ribbon.WebCrawler
                 }
             }
 
-            m_topicModel.SaveToFile(m_workDir + topicModelFileName, (int id) => this.WordList[id]);
+            m_topicModel.SaveToFile(m_workDir + topicModelFileName, m_workDir + topicModelSummaryFilename, (int id) => this.WordList[id]);
         }
 
         public void LoadFromFile()
@@ -155,7 +156,9 @@ namespace Ribbon.WebCrawler
                 catch (Exception) { }
             }
 
-            this.m_topicModel.LoadFromFile(this.m_workDir + topicModelFileName, (string word) => this.WordToWordId(word, false));
+            this.m_topicModel.LoadFromFile(this.m_workDir + topicModelFileName,
+                (string word) => this.WordToWordId(word, false),
+                (int id) => this.WordList[id]);
         }
 
         public void AddFromWordArray(List<string> arrayOfWord) // sentence
