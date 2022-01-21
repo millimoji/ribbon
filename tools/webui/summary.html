@@ -135,7 +135,7 @@ ko.components.register("word-prob", {
 	viewModel: function (params) {
 		var me = this;
 		var wordProps = params.wp.w.split(",");
-		me.wordText = wordProps[0];
+		me.wordText = wordProps[0] + "/" + wordProps[1];
 	}
 });
 

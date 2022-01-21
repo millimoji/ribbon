@@ -25,6 +25,7 @@ namespace Ribbon.WebCrawler
             new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
         };
 
+        const int thresholdToDiv2 = 4000000; // n7gram max
         const string BOS = "[BOS]";
         const string EOS = "[EOS]";
         const string unigramFileName = "unigram.txt";
@@ -79,7 +80,12 @@ namespace Ribbon.WebCrawler
             }
         }
 
-        public void SaveFile()
+        public bool ShouldFlush()
+        {
+            return this.m_nGrams[6].Count >= thresholdToDiv2;
+        }
+
+        public void SaveFile() // should 
         {
             SlideDataFile();
 
@@ -108,14 +114,28 @@ namespace Ribbon.WebCrawler
             m_topicModel.SaveToFile(m_workDir + topicModelFileName, m_workDir + topicModelSummaryFilename, (int id) => this.WordList[id]);
         }
 
-        public void LoadFromFile()
+        public void LoadFromFile(int divNum = 1)
         {
-            long divNum = 1;
             if (File.Exists(m_workDir + doHalfFileName))
             {
                 divNum = 2;
                 File.Delete(m_workDir + doHalfFileName);
             }
+
+            //
+            this.WordHash = new Dictionary<string, int>(StringComparer.Ordinal);
+            this.WordList = new List<string>();
+            this.m_nGrams = new Dictionary<Tuple<int, int, int, int, int, int, int>, long>[7]
+                {
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                };
+            //
 
             for (int nGram = 1; nGram <= 7; ++nGram)
             {
@@ -141,13 +161,17 @@ namespace Ribbon.WebCrawler
                                     continue;
                                 }
 
-                                hashKeyList[0] = WordToWordId(nGramLine[0]);
-                                if (nGram >= 2) { hashKeyList[1] = WordToWordId(nGramLine[1]); }
-                                if (nGram >= 3) { hashKeyList[2] = WordToWordId(nGramLine[2]); }
-                                if (nGram >= 4) { hashKeyList[3] = WordToWordId(nGramLine[3]); }
-                                if (nGram >= 5) { hashKeyList[4] = WordToWordId(nGramLine[4]); }
-                                if (nGram >= 6) { hashKeyList[5] = WordToWordId(nGramLine[5]); }
-                                if (nGram >= 7) { hashKeyList[6] = WordToWordId(nGramLine[6]); }
+                                hashKeyList[0] = WordToWordId(nGramLine[0], nGram <= 1);
+                                if (nGram >= 2) { hashKeyList[1] = WordToWordId(nGramLine[1], false); }
+                                if (nGram >= 3) { hashKeyList[2] = WordToWordId(nGramLine[2], false); }
+                                if (nGram >= 4) { hashKeyList[3] = WordToWordId(nGramLine[3], false); }
+                                if (nGram >= 5) { hashKeyList[4] = WordToWordId(nGramLine[4], false); }
+                                if (nGram >= 6) { hashKeyList[5] = WordToWordId(nGramLine[5], false); }
+                                if (nGram >= 7) { hashKeyList[6] = WordToWordId(nGramLine[6], false); }
+                                if (hashKeyList.Any(x => x < 0))
+                                {
+                                    continue;
+                                }
                                 AddNgram(nGram, hashKeyList, hashValue);
                             }
                         }

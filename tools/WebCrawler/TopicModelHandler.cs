@@ -72,6 +72,7 @@ namespace Ribbon.WebCrawler
                 });
                 TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => Math.Log(x / sum));
 
+                this.wordProbs = new Dictionary<int, double[]>(); // clear
                 while ((line = fileStream.ReadLine()) != null)
                 {
                     var wordLine = line.Split('\t');
@@ -108,7 +109,7 @@ namespace Ribbon.WebCrawler
             return array;
         }
 
-#if false
+#if true
         // Topic Model
         public double CalculateQAndApply(List<int> wordIds, TopicModelNext next)
         {
@@ -159,7 +160,7 @@ namespace Ribbon.WebCrawler
 
             TopicModelHandler.DoubleForEach(work, (double x, int idx) => Math.Exp(x - qLoggedDenomi)); // convert to probability
 
-            TopicModelHandler.DoubleForEach(next.topicProbs, (double x, int idx) => (x + wordIds.Count * work[idx])); // Heuristics: multiply word count
+            TopicModelHandler.DoubleForEach(next.topicProbs, (double x, int idx) => (x + work[idx])); // Heuristics: multiply word count
             foreach (var targetWordId in wordIds)
             {
                 var targetProbs = next.GetProbsForWord(targetWordId);
