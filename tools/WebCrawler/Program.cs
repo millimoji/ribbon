@@ -119,6 +119,7 @@ namespace Ribbon.WebCrawler
                     lastSavedHour = DateTime.Now.Hour;
                 }
 
+                Console.WriteLine("End: LoadWebAndAnalyze");
                 return thisResult;
             });
         }

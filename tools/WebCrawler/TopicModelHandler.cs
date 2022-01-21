@@ -377,7 +377,7 @@ namespace Ribbon.WebCrawler
     {
         public const int TopicCount = 63; // 255;
         public const double updateMergeRate = 0.98; // 0.9;
-        public const double updateWordCount = 200000;
+        public const double updateWordCount = 10000;
         public const int perplexHistMax = 100;
         public const int wordCountRequirement = 4;
 

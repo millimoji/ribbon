@@ -259,7 +259,6 @@ namespace Ribbon.WebCrawler
 
         string inputFilename;
         string outputFilename;
-        List<List<string>> result = new List<List<string>>();
 
         public MorphAnalyzer(string workingFolder)
         {
@@ -281,7 +280,7 @@ namespace Ribbon.WebCrawler
 
             LaunchMecab();
 
-            ReadOutputFile();
+            var result = ReadOutputFile();
 
             File.Delete(inputFilename);
             File.Delete(outputFilename);
@@ -313,8 +312,10 @@ namespace Ribbon.WebCrawler
             p.WaitForExit();
         }
 
-        private void ReadOutputFile()
+        private List<List<string>> ReadOutputFile()
         {
+            var result = new List<List<string>>();
+
             using (StreamReader mecabOutput = new StreamReader(outputFilename))
             {
                 List<string> building = new List<string>();
@@ -351,6 +352,8 @@ namespace Ribbon.WebCrawler
                     building.Add(oneWord);
                 }
             }
+
+            return result;
         }
     }
 
