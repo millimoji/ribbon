@@ -108,7 +108,38 @@ namespace Ribbon.WebCrawler
             return array;
         }
 
-        public double[] CalcurateQ(List<int> wordIds, out double loggedQDenomi)
+#if true
+        public double CalcurateQAndApply(List<int> wordIds, TopicModelNext next)
+        {
+            var work = new double[TopicModelHandler.TopicCount];
+            var loggedLikelyhood = 0.0;
+
+            foreach (var wordId in wordIds)
+            {
+                var probs = this.GetProbsForWord(wordId);
+                work[0] = this.topicProbs[0] + probs[0];
+                var qLoggedDenomi = work[0];
+                for (int i = 1; i < work.Length; ++i)
+                {
+                    work[i] = this.topicProbs[i] + probs[i];
+                    qLoggedDenomi = this.AddLogedProb(qLoggedDenomi, work[i]);
+                }
+                loggedLikelyhood += qLoggedDenomi;
+
+                TopicModelHandler.DoubleForEach(work, (double x, int idx) => Math.Exp(x - qLoggedDenomi)); // convert to probability
+
+                TopicModelHandler.DoubleForEach(next.topicProbs, (double x, int idx) => (x + work[idx]));
+                foreach (var targetWordId in wordIds)
+                {
+                    var targetProbs = next.GetProbsForWord(targetWordId);
+                    TopicModelHandler.DoubleForEach(targetProbs, (double x, int idx) => (x + work[idx]));
+                }
+            }
+
+            return loggedLikelyhood;
+        }
+#else
+        public double[] CalcurateQ(List<int> wordIds, TopicModelNext next, out double loggedQDenomi)
         {
             var sums = new double[TopicModelHandler.TopicCount];
             TopicModelHandler.DoubleForEach(sums, (double x, int idx) => this.topicProbs[idx]);
@@ -127,6 +158,7 @@ namespace Ribbon.WebCrawler
             loggedQDenomi = logSumSum;
             return sums;
         }
+#endif
 
         private double[] GetProbsForWord(int index)
         {
@@ -155,7 +187,16 @@ namespace Ribbon.WebCrawler
 
         public void MergeNext(TopicModelNext next, double keepRate)
         {
-            this.MergeLogAndProbAndNormalize(this.topicProbs, next.topicProbs, keepRate);
+            double newRate = 1.0 - keepRate;
+            double sum = 0.0;
+            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) =>
+            {
+                var value = Math.Exp(x) * keepRate + next.topicProbs[idx] * newRate;
+                value = this.GetSmallShuffled(value);
+                sum += value;
+                return value;
+            });
+            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => Math.Log(x / sum));
 
             int[] indexArray = new int[this.wordProbs.Count + next.wordProbs.Count];
             {
@@ -169,10 +210,10 @@ namespace Ribbon.WebCrawler
                     indexArray[i++] = kv.Key;
                 }
             }
-            var nextRate = 1.0 - keepRate;
             Array.Sort(indexArray);
             var sums = new double[TopicModelHandler.TopicCount];
             TopicModelHandler.DoubleForEach(sums, (double x, int idx) => 0.0);
+            var deleteList = new List<int>();
 
             for (int i = 0; i < indexArray.Length; ++i)
             {
@@ -183,8 +224,8 @@ namespace Ribbon.WebCrawler
                     var srcArray = next.wordProbs[wordId]; // prob
                     TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
                     {
-                        var value = Math.Exp(x) * keepRate + srcArray[idx] * nextRate;
-                        value = Math.Max(value, this.GetSmallRandomNumber());
+                        var value = Math.Exp(x) * keepRate + srcArray[idx] * newRate;
+                        value = this.GetSmallShuffled(Math.Max(value, 1.0 / Single.MaxValue));
                         sums[idx] += value;
                         return value;
                     });
@@ -195,27 +236,40 @@ namespace Ribbon.WebCrawler
                     double[] dstArray;
                     if (this.wordProbs.TryGetValue(indexArray[i], out dstArray))
                     {
-                        TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
+                        // Here is for no word in next. if probs is too small, remove this entry
+                        if (dstArray.Select(x => Math.Exp(x)).Sum() * keepRate <= (1.0 / Single.MaxValue * dstArray.Length))
                         {
-                            var value = Math.Exp(x) * keepRate;
-                            value = Math.Max(value, this.GetSmallRandomNumber());
-                            sums[idx] += value;
-                            return value;
-                        });
+                            deleteList.Add(indexArray[i]);
+                        }
+                        else
+                        {
+                            TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
+                            {
+                                var value = Math.Exp(x) * keepRate;
+                                value = this.GetSmallShuffled(Math.Max(value, 1.0 / Single.MaxValue));
+                                sums[idx] += value;
+                                return value;
+                            });
+                        }
                     }
                     else
                     {
+                        // logically, this path should not happen
                         dstArray = this.GetProbsForWord(wordId);
                         var srcArray = next.wordProbs[wordId]; // prob
                         TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
                         {
-                            var value = srcArray[idx] * nextRate;
-                            value = Math.Max(value, this.GetSmallRandomNumber());
+                            var value = srcArray[idx] * newRate;
+                            value = this.GetSmallShuffled(Math.Max(value, 1.0 / Single.MaxValue));
                             sums[idx] += value;
                             return value;
                         });
                     }
                 }
+            }
+            foreach (var deleteItem in deleteList)
+            {
+                this.wordProbs.Remove(deleteItem);
             }
             // normalize
             foreach (var kv in this.wordProbs)
@@ -224,24 +278,10 @@ namespace Ribbon.WebCrawler
             }
         }
 
-        private void MergeLogAndProbAndNormalize(double[] dst, double[] next, double keepRate)
-        {
-            double newRate = 1.0 - keepRate;
-            double sum = 0.0;
-            TopicModelHandler.DoubleForEach(dst, (double x, int idx) =>
-            {
-                var value = Math.Exp(x) * keepRate + next[idx] * newRate;
-                sum += value;
-                return value;
-            });
-            TopicModelHandler.DoubleForEach(dst, (double x, int idx) => Math.Log(x / sum));
-        }
-
         private void NormalizeWordProbs()
         {
             var sums = new double[TopicModelHandler.TopicCount];
             TopicModelHandler.DoubleForEach(sums, (double x, int idx) => 0.0);
-            for (int i = 0; i < sums.Length; ++i) sums[i] = 0.0;
 
             foreach (var kv in this.wordProbs)
             {
@@ -265,7 +305,12 @@ namespace Ribbon.WebCrawler
 
         private double GetSmallRandomNumber()
         {
-            return (double)random.Next(0x10, 0x10000) / Single.MaxValue;
+            return (double)random.Next(0x10, 0x10000) / (double)Single.MaxValue;
+        }
+
+        private double GetSmallShuffled(double x)
+        {
+            return x * (1.0 + 0.01 * (double)random.Next(0x10, 0x10000) / (double)0x10000);
         }
     }
 
@@ -330,9 +375,9 @@ namespace Ribbon.WebCrawler
 
     public class TopicModelHandler
     {
-        public const int TopicCount = 255;
+        public const int TopicCount = 63; // 255;
         public const double updateMergeRate = 0.8; // 0.9;
-        public const double updateWordCount = 10000; // 200000;
+        public const double updateWordCount = 200000;
         public const int perplexHistMax = 100;
         public const int wordCountRequirement = 4;
 
@@ -369,10 +414,13 @@ namespace Ribbon.WebCrawler
             }
 
             double loggedQDenomi;
+#if true
+            loggedQDenomi = this.baseState.CalcurateQAndApply(listId, this.nextState);
+#else
             var qList = this.baseState.CalcurateQ(listId, out loggedQDenomi);
             TopicModelHandler.IsValidNumber(loggedQDenomi);
-
             this.nextState.AddQLsit(qList, listId);
+#endif
 
             this.currentLikelihood += loggedQDenomi;
             TopicModelHandler.IsValidNumber(this.currentLikelihood);
