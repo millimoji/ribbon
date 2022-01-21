@@ -70,7 +70,7 @@ namespace Ribbon.WebCrawler
         };
 
         CrawlerDataContext m_db;
-        int m_lastHostnameIndex;
+        int m_lastHostnameIndex = -1;
 
         public DbAccessorRaw(string filePath)
         {
@@ -282,7 +282,15 @@ namespace Ribbon.WebCrawler
                 return new List<string>(); // empty
             }
 
-            m_lastHostnameIndex = m_lastHostnameIndex % hostNames.Count;
+            if (m_lastHostnameIndex < 0)
+            {
+                var random = new System.Random();
+                m_lastHostnameIndex = random.Next(1, hostNames.Count - 1);
+            }
+            else
+            {
+                m_lastHostnameIndex = m_lastHostnameIndex % hostNames.Count;
+            }
 
             var hostAndCount = new Dictionary<string, int>();
 

@@ -108,8 +108,9 @@ namespace Ribbon.WebCrawler
             return array;
         }
 
-#if true
-        public double CalcurateQAndApply(List<int> wordIds, TopicModelNext next)
+#if false
+        // Topic Model
+        public double CalculateQAndApply(List<int> wordIds, TopicModelNext next)
         {
             var work = new double[TopicModelHandler.TopicCount];
             var loggedLikelyhood = 0.0;
@@ -139,24 +140,32 @@ namespace Ribbon.WebCrawler
             return loggedLikelyhood;
         }
 #else
-        public double[] CalcurateQ(List<int> wordIds, TopicModelNext next, out double loggedQDenomi)
+        // Mixture Unigram Model
+        public double CalculateQAndApply(List<int> wordIds, TopicModelNext next)
         {
-            var sums = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(sums, (double x, int idx) => this.topicProbs[idx]);
+            var work = new double[TopicModelHandler.TopicCount];
+            TopicModelHandler.DoubleForEach(work, (double x, int idx) => this.topicProbs[idx]);
+
             foreach (var wordId in wordIds)
             {
                 var probs = this.GetProbsForWord(wordId);
-                TopicModelHandler.DoubleForEach(sums, (double x, int idx) => (x + probs[idx]));
+                TopicModelHandler.DoubleForEach(work, (double x, int idx) => (x + probs[idx]));
             }
-            var logSumSum = sums[0];
-            for (int i = 1; i < sums.Length; ++i)
+            var qLoggedDenomi = work[0];
+            for (int i = 1; i < work.Length; ++i)
             {
-                logSumSum = this.AddLogedProb(logSumSum, sums[i]);
+                qLoggedDenomi = this.AddLogedProb(qLoggedDenomi, work[i]);
             }
-            // exp(a) / exp(b) = exp(a -b)
-            TopicModelHandler.DoubleForEach(sums, (double x, int idx) => Math.Exp(x - logSumSum));
-            loggedQDenomi = logSumSum;
-            return sums;
+
+            TopicModelHandler.DoubleForEach(work, (double x, int idx) => Math.Exp(x - qLoggedDenomi)); // convert to probability
+
+            TopicModelHandler.DoubleForEach(next.topicProbs, (double x, int idx) => (x + wordIds.Count * work[idx])); // Heuristics: multiply word count
+            foreach (var targetWordId in wordIds)
+            {
+                var targetProbs = next.GetProbsForWord(targetWordId);
+                TopicModelHandler.DoubleForEach(targetProbs, (double x, int idx) => (x + work[idx]));
+            }
+            return qLoggedDenomi;
         }
 #endif
 
@@ -169,7 +178,7 @@ namespace Ribbon.WebCrawler
             }
             probLine = new double[TopicModelHandler.TopicCount];
             var newValue = Math.Log(1.0 / Single.MaxValue);
-            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => newValue);
+            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => this.GetSmallShuffled(newValue));
             this.wordProbs.Add(index, probLine);
             return probLine;
         }
@@ -326,16 +335,6 @@ namespace Ribbon.WebCrawler
             this.Clear();
         }
 
-        public void AddQLsit(double [] qList, List<int> wordIds)
-        {
-            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => (x + qList[idx]));
-            foreach (var wordId in wordIds)
-            {
-                var wordProbs = this.GetProbsForWord(wordId);
-                TopicModelHandler.DoubleForEach(wordProbs, (double x, int idx) => (x + qList[idx]));
-            }
-        }
-
         public double[] GetProbsForWord(int index)
         {
             double[] probLine;
@@ -377,7 +376,7 @@ namespace Ribbon.WebCrawler
     public class TopicModelHandler
     {
         public const int TopicCount = 63; // 255;
-        public const double updateMergeRate = 0.8; // 0.9;
+        public const double updateMergeRate = 0.98; // 0.9;
         public const double updateWordCount = 200000;
         public const int perplexHistMax = 100;
         public const int wordCountRequirement = 4;
@@ -414,14 +413,7 @@ namespace Ribbon.WebCrawler
                 return; // ignore
             }
 
-            double loggedQDenomi;
-#if true
-            loggedQDenomi = this.baseState.CalcurateQAndApply(listId, this.nextState);
-#else
-            var qList = this.baseState.CalcurateQ(listId, out loggedQDenomi);
-            TopicModelHandler.IsValidNumber(loggedQDenomi);
-            this.nextState.AddQLsit(qList, listId);
-#endif
+            var loggedQDenomi = this.baseState.CalculateQAndApply(listId, this.nextState);
 
             this.currentLikelihood += loggedQDenomi;
             TopicModelHandler.IsValidNumber(this.currentLikelihood);
