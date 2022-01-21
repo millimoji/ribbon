@@ -168,7 +168,8 @@ namespace Ribbon.WebCrawler
                 return probLine;
             }
             probLine = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => Math.Log(this.GetSmallRandomNumber()));
+            var newValue = Math.Log(1.0 / Single.MaxValue);
+            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => newValue);
             this.wordProbs.Add(index, probLine);
             return probLine;
         }
