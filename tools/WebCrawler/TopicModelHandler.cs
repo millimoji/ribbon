@@ -66,7 +66,7 @@ namespace Ribbon.WebCrawler
                 double sum = 0.0;
                 TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) =>
                 {
-                    var value = (idx < (headerLine.Length - 1)) ? Math.Exp(Convert.ToDouble(headerLine[idx + 1])) : this.GetSmallRandomNumber();
+                    var value = (idx < (headerLine.Length - 1)) ? Math.Exp(Convert.ToDouble(headerLine[idx + 1])) : this.GetSmallShuffled(1.0 / (double)this.topicProbs.Length);
                     sum += value;
                     return value;
                 });
@@ -87,7 +87,7 @@ namespace Ribbon.WebCrawler
                     }
                     var singleWordProbs = this.GetProbsForWord(wordId);
                     TopicModelHandler.DoubleForEach(singleWordProbs, (double x, int idx) =>
-                        (idx < (wordLine.Length - 1)) ? Convert.ToDouble(wordLine[idx + 1]): Math.Log(this.GetSmallRandomNumber()));
+                        (idx < (wordLine.Length - 1)) ? Convert.ToDouble(wordLine[idx + 1]) : Math.Log(1.0 / singleWordProbs.Length / this.topicProbs.Length));
                 }
                 this.NormalizeWordProbs();
             }
@@ -178,8 +178,8 @@ namespace Ribbon.WebCrawler
                 return probLine;
             }
             probLine = new double[TopicModelHandler.TopicCount];
-            var baseProb = 1.0 / Math.Max((double)this.wordProbs.Count, 20000.0);
-            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => this.GetRandomNumber() * baseProb);
+            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) =>
+                (1.0 / TopicModelHandler.updateWordCount * (double)random.Next(5000, 15000) / 1000.0));
             this.wordProbs.Add(index, probLine);
             return probLine;
         }
@@ -196,7 +196,7 @@ namespace Ribbon.WebCrawler
             return logA + Math.Log(1.0 + Math.Exp(logB - logA));
         }
 
-        public void MergeNext(TopicModelNext next, double keepRate, bool canDelete = true)
+        public void MergeNext(TopicModelNext next, double keepRate)
         {
             double newRate = 1.0 - keepRate;
             double sum = 0.0;
@@ -266,21 +266,13 @@ namespace Ribbon.WebCrawler
                     double[] dstArray;
                     if (this.wordProbs.TryGetValue(indexArray[i], out dstArray))
                     {
-                        // Here is for no word in next. if probs is too small, remove this entry
-                        if (canDelete && dstArray.Select(x => Math.Exp(x)).Sum() * keepRate <= (1.0 / Single.MaxValue * dstArray.Length))
+                        TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
                         {
-                            deleteList.Add(indexArray[i]);
-                        }
-                        else
-                        {
-                            TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
-                            {
-                                var value = Math.Exp(x) * keepRate;
-                                value = this.GetSmallShuffled(Math.Max(value, 1.0 / Single.MaxValue));
-                                sums[idx] += value;
-                                return value;
-                            });
-                        }
+                            var value = Math.Exp(x) * keepRate;
+                            value = this.GetSmallShuffled(Math.Max(value, 1.0 / Single.MaxValue));
+                            sums[idx] += value;
+                            return value;
+                        });
                     }
                     else
                     {
@@ -331,11 +323,6 @@ namespace Ribbon.WebCrawler
         private double GetRandomNumber()
         {
             return (double)random.Next(0x10, 0x10000) / (double)0x10000;
-        }
-
-        private double GetSmallRandomNumber()
-        {
-            return (double)random.Next(0x10, 0x10000) / (double)Single.MaxValue;
         }
 
         private double GetSmallShuffled(double x)
@@ -448,19 +435,26 @@ namespace Ribbon.WebCrawler
             }
         }
 
+        public void PrintCurretState()
+        {
+            var curPp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
+            Console.WriteLine($"[TopicModel - pp:{curPp}, word:{this.baseState.GetWordCount()}, words:{this.currentWordCount}, pp-ave:{this.GetPerplexyAvarage()}");
+        }
+
         private void LearnLoopUntilPPTarget()
         {
             var initialPp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
             this.ppHist.Enqueue(initialPp);
-            Console.WriteLine($"[TopicMode - initial] pp:{initialPp}, word:{this.baseState.GetWordCount()} pp-ave:{this.GetPerplexyAvarage()}");
+            Console.WriteLine($"[TopicModel - initial] pp:{initialPp}, word:{this.baseState.GetWordCount()} pp-ave:{this.GetPerplexyAvarage()}");
 
             List<double> ppLocalHistory = new List<double>();
+            ppLocalHistory.Add(initialPp);
 
             for (var loopCount = 1; ; ++loopCount)
             {
                 var likelyHood = 0.0;
                 this.nextState.Normalize();
-                this.baseState.MergeNext(this.nextState, updateMergeRate, false);
+                this.baseState.MergeNext(this.nextState, updateMergeRate);
                 this.nextState.Clear();
 
                 foreach (var document in this.documentHistory)
@@ -472,34 +466,17 @@ namespace Ribbon.WebCrawler
                 var currentPp = Math.Exp(-likelyHood / this.currentWordCount);
                 ppLocalHistory.Add(currentPp);
 
-                if (ppLocalHistory.Count > 5)
+                var goNext = ppLocalHistory.Skip(Math.Max(ppLocalHistory.Count - 5, 0)).All(x => Math.Abs(x - currentPp) < currentPp * 0.1);
+                if (goNext)
                 {
-                    var goNext = ppLocalHistory.Skip(ppLocalHistory.Count - 5).All(x => Math.Abs(x - currentPp) < currentPp * 0.1);
-                    if (goNext)
-                    {
-                        Console.WriteLine($"[TopicMode - Ok:[{loopCount}] pp:{currentPp}");
-                        break;
-                    }
+                    Console.WriteLine($"[TopicModel - Ok:[{loopCount}] pp:{currentPp}");
+                    break;
                 }
-                Console.WriteLine($"[TopicMode - retry:[{loopCount}] pp:{currentPp}");
+                Console.WriteLine($"[TopicModel - retry:[{loopCount}] pp:{currentPp}");
             }
 
             this.nextState.Clear();
             this.documentHistory.Clear();
-
-            this.currentLikelihood = 0.0;
-            this.currentWordCount = 0.0;
-        }
-
-        private void ApplyNextState()
-        {
-            var pp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
-            this.ppHist.Enqueue(pp);
-            Console.WriteLine($"[TopicMode] pp:{pp}, word:{this.baseState.GetWordCount()} pp-ave:{this.GetPerplexyAvarage()}");
-
-            this.nextState.Normalize();
-            this.baseState.MergeNext(this.nextState, updateMergeRate);
-            this.nextState.Clear();
 
             this.currentLikelihood = 0.0;
             this.currentWordCount = 0.0;

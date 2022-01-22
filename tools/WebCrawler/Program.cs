@@ -112,6 +112,7 @@ namespace Ribbon.WebCrawler
                 {
                     m_nGraphStore.AddFromWordArray(morphList);
                 }
+                m_nGraphStore.PrintCurrentState();
 
                 if (m_nGraphStore.ShouldFlush())
                 {

@@ -219,6 +219,11 @@ namespace Ribbon.WebCrawler
             m_topicModel.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
         }
 
+        public void PrintCurrentState()
+        {
+            m_topicModel.PrintCurretState();
+        }
+
         int WordToWordId(string word, bool createNew = true)
         {
             int wordId;
