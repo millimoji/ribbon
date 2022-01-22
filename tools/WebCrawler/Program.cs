@@ -26,12 +26,12 @@ namespace Ribbon.WebCrawler
         }
 
         const int saveInternvalHour = 6;
-        const int parallelDownload = 10;
+        const int parallelDownload = 20;
 
         MorphAnalyzer m_morphAnalyzer = new MorphAnalyzer(workingFolder);
         NGramStore m_nGraphStore = new NGramStore(workingFolder);
         DbAcccessor m_dbAcccessor = new DbAcccessor(workingFolder);
-        public int lastSavedHour = -1;
+        public int lastSavedHour = DateTime.Now.Hour;
 
         void Run()
         {
