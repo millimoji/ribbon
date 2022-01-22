@@ -178,7 +178,8 @@ namespace Ribbon.WebCrawler
                 return probLine;
             }
             probLine = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => this.GetSmallRandomNumber());
+            var baseProb = 1.0 / Math.Max((double)this.wordProbs.Count, 20000.0);
+            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => this.GetRandomNumber() * baseProb);
             this.wordProbs.Add(index, probLine);
             return probLine;
         }
@@ -451,8 +452,9 @@ namespace Ribbon.WebCrawler
         {
             var initialPp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
             this.ppHist.Enqueue(initialPp);
-            var targetPP = (initialPp > 10000.0) ? 10000.0 : Math.Max(initialPp / 10.0, 2000.0);
             Console.WriteLine($"[TopicMode - initial] pp:{initialPp}, word:{this.baseState.GetWordCount()} pp-ave:{this.GetPerplexyAvarage()}");
+
+            List<double> ppLocalHistory = new List<double>();
 
             for (var loopCount = 1; ; ++loopCount)
             {
@@ -466,16 +468,20 @@ namespace Ribbon.WebCrawler
                     var loggedQDenomi = this.baseState.CalculateQAndApply(document, this.nextState);
                     likelyHood += loggedQDenomi;
                 }
+
                 var currentPp = Math.Exp(-likelyHood / this.currentWordCount);
-                if (currentPp <= targetPP)
+                ppLocalHistory.Add(currentPp);
+
+                if (ppLocalHistory.Count > 5)
                 {
-                    Console.WriteLine($"[TopicMode - Ok:[{loopCount}] pp:{currentPp}");
-                    break;
+                    var goNext = ppLocalHistory.Skip(ppLocalHistory.Count - 5).All(x => Math.Abs(x - currentPp) < currentPp * 0.1);
+                    if (goNext)
+                    {
+                        Console.WriteLine($"[TopicMode - Ok:[{loopCount}] pp:{currentPp}");
+                        break;
+                    }
                 }
-                else
-                {
-                    Console.WriteLine($"[TopicMode - retry:[{loopCount}] pp:{currentPp}");
-                }
+                Console.WriteLine($"[TopicMode - retry:[{loopCount}] pp:{currentPp}");
             }
 
             this.nextState.Clear();
