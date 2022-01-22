@@ -11,6 +11,7 @@ namespace Ribbon.WebCrawler
         // constants
         public const string mecabExe = "c:\\Program Files (x86)\\MeCab\\bin\\mecab.exe";
         public const string workingFolder = "c:\\lmworking\\";
+        public const string ftpUploader = "..\\..\\..\\webui\\ftpupload.cmd";
 
         static void Main(string[] args)
         {
@@ -25,7 +26,7 @@ namespace Ribbon.WebCrawler
             public HashSet<string> referenceUrls = new HashSet<string>();
         }
 
-        const int saveInternvalHour = 6;
+        const int saveInternvalHour = 3; // 6;
         const int parallelDownload = 20;
 
         MorphAnalyzer m_morphAnalyzer = new MorphAnalyzer(workingFolder);

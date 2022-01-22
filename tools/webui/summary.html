@@ -51,13 +51,19 @@ word-prob {
 function DataModel()
 {
 	var me = this;
-	me.dataModel = new ko.observable(null);
-	me.topicModel = new ko.observableArray([]);
+	me.dataModel = ko.observable(null);
+	me.generatedTime = ko.observable("");
+	me.tps = {
+		perplexity: ko.observable(0),
+	};
+	me.topicModel = ko.observableArray([]);
 
 	me.reloadJson = () => {
 		var utl = "topicmodel-summary.json";
 		me.downloadJson(utl).then(dataModel => {
 			me.dataModel(dataModel);
+			me.generatedTime(dataModel.generatedTime);
+			me.tps.perplexity = dataModel.tps.perplexity;
 			me.topicModel(dataModel.topicModel);
 		});
 	};
@@ -87,13 +93,14 @@ function DataModel()
 
 ko.components.register("root-node", {
 	template:
-		'<h1>Summary Page</h1>' + 
+		'<h1>Summary Page <span data-bind="text: generatedTime"></span></h1>' + 
 		'<button data-bind="click: onReload">Reload</button>' +
 		'<topic-model-summary params="dataModel:dataModel"></topic-model-summary>'
 	,
 	viewModel: function (params) {
 		var me = this;
 		me.dataModel = new DataModel();
+		me.generatedTime = me.dataModel.generatedTime;
 		me.onReload = function () { me.dataModel.reloadJson(); };
 
 		me.dataModel.reloadJson();
@@ -103,6 +110,7 @@ ko.components.register("root-node", {
 ko.components.register("topic-model-summary", {
 	template:
 		'<div class="topic-model-summary">' +
+			'<span class="perplexity" data-bind="text: perplexity"></span>' +
 			'<ul class="topic-list" data-bind="foreach: topicModel">' +
 				'<li><topic-word-list params="wordList:$data, index:$index"></topic-word-list></li>' +
 			'</ul>' +
@@ -111,6 +119,7 @@ ko.components.register("topic-model-summary", {
 	viewModel: function (params) {
 		var me = this;
 		me.topicModel = params.dataModel.topicModel;
+		me.perplexity = params.dataModel.tps.perplexity;
 	}
 });
 
@@ -126,7 +135,9 @@ ko.components.register("topic-word-list", {
 	viewModel: function (params) {
 		var me = this;
 		me.wordList = params.wordList;
-		me.title = (params.index() == 0) ? "Low Entropy" : ("Topic " + params.index().toString());
+		me.title = (params.index() == 0) ? "Low Entropy" :
+					(params.index() == 1) ? "High Entropy" :
+					("Topic " + (params.index() - 1).toString());
 	}
 });
 

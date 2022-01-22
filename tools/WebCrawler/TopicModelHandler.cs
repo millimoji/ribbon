@@ -11,7 +11,7 @@ namespace Ribbon.WebCrawler
     class TopicModelState
     {
         private double[] topicProbs; // log
-        private Dictionary<int, double[]> wordProbs; // log
+        public Dictionary<int, double[]> wordProbs; // log
         private System.Random random = new System.Random();
 
         public TopicModelState()
@@ -25,7 +25,7 @@ namespace Ribbon.WebCrawler
             return this.wordProbs.Count;
         }
 
-        public void SaveToFile(string fileName, string summaryFilename, Func<int, string> id2word)
+        public void SaveToFile(string fileName, Func<int, string> id2word)
         {
             using (StreamWriter fileStream = new StreamWriter(fileName, false, Encoding.Unicode))
             {
@@ -39,12 +39,6 @@ namespace Ribbon.WebCrawler
                     var outputLine = wordText + "\t" + String.Join("\t", item.Value);
                     fileStream.WriteLine(outputLine);
                 }
-            }
-
-
-            {
-                var summarizer = new JsonSummarizer();
-                summarizer.Serialize(summaryFilename, this.wordProbs, id2word);
             }
         }
 
@@ -410,7 +404,12 @@ namespace Ribbon.WebCrawler
 
         public void SaveToFile(string fileName, string summaryFilename, Func<int, string> id2Word)
         {
-            this.baseState.SaveToFile(fileName, summaryFilename, id2Word);
+            this.baseState.SaveToFile(fileName, id2Word);
+
+            {
+                var summarizer = new JsonSummarizer();
+                summarizer.Serialize(summaryFilename, this.GetPerplexyAvarage(), this.baseState.wordProbs, id2Word);
+            }
         }
 
         public void LearnDocument(List<string> document, Func<string, int> word2id)
