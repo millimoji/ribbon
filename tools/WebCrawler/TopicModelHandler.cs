@@ -13,6 +13,7 @@ namespace Ribbon.WebCrawler
         private double[] topicProbs; // log
         public Dictionary<int, double[]> wordProbs; // log
         private System.Random random = new System.Random();
+        public bool shouldRnadomInitialize = true;
 
         public TopicModelState()
         {
@@ -48,6 +49,7 @@ namespace Ribbon.WebCrawler
             {
                 return false;
             }
+            this.shouldRnadomInitialize = false;
             using (StreamReader fileStream = new StreamReader(fileName))
             {
                 string line = fileStream.ReadLine();
@@ -218,7 +220,6 @@ namespace Ribbon.WebCrawler
             Array.Sort(indexArray);
             var sums = new double[TopicModelHandler.TopicCount];
             TopicModelHandler.DoubleForEach(sums, (double x, int idx) => 0.0);
-            var deleteList = new List<int>();
 
             for (int i = 0; i < indexArray.Length; ++i)
             {
@@ -283,15 +284,57 @@ namespace Ribbon.WebCrawler
                     }
                 }
             }
-            foreach (var deleteItem in deleteList)
-            {
-                this.wordProbs.Remove(deleteItem);
-            }
             // normalize
             foreach (var kv in this.wordProbs)
             {
-                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => Math.Log(x / sums[idx]));
+                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
+                {
+                    var value = Math.Log(x / sums[idx]);
+                    if (value >= 0.0)
+                    {
+                        throw new Exception("invalid value range");
+                    }
+                    return value;
+                });
             }
+        }
+
+        public void FullRandomInitialize()
+        {
+            double sum = 0.0;
+            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) =>
+            {
+                var value = (double)random.Next(100, 10000) / (double)10000.0;
+                sum += value;
+                return value;
+            });
+            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => Math.Log(x / sum));
+
+            var sums = new double[TopicModelHandler.TopicCount];
+            TopicModelHandler.DoubleForEach(sums, (double x, int idx) => 0.0);
+
+            foreach (var kv in this.wordProbs)
+            {
+                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
+                {
+                    var value = (double)random.Next(100, 10000) / (double)10000.0;
+                    sums[idx] += value;
+                    return value;
+                });
+            }
+            foreach (var kv in this.wordProbs)
+            {
+                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
+                {
+                    var value = Math.Log(x / sums[idx]);
+                    if (value >= 0.0)
+                    {
+                        throw new Exception("invalid value range");
+                    }
+                    return value;
+                });
+            }
+            this.shouldRnadomInitialize = false;
         }
 
         private void NormalizeWordProbs()
@@ -310,7 +353,15 @@ namespace Ribbon.WebCrawler
             }
             foreach (var kv in this.wordProbs)
             {
-                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => Math.Log(x / sums[idx]));
+                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
+                {
+                    var value = Math.Log(x / sums[idx]);
+                    if (value >= 0.0)
+                    {
+                        throw new Exception("invalid value range");
+                    }
+                    return value;
+                });
             }
         }
 
@@ -378,7 +429,7 @@ namespace Ribbon.WebCrawler
     {
         public const int TopicCount = 63; // 255;
         public const double updateMergeRate = 0.9; // 0.9;
-        public const double updateWordCount = 200000;
+        public const double updateWordCount = 1000; // 200000;
         public const int perplexHistMax = 100;
         public const int wordCountRequirement = 4;
 
@@ -399,6 +450,11 @@ namespace Ribbon.WebCrawler
 
         public void LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word)
         {
+            this.nextState.Clear();
+            this.documentHistory.Clear();
+            this.currentLikelihood = 0.0;
+            this.currentWordCount = 0.0;
+
             this.baseState.LoadFromFile(fileName, word2id, id2word);
         }
 
@@ -452,9 +508,16 @@ namespace Ribbon.WebCrawler
             for (var loopCount = 1; ; ++loopCount)
             {
                 var likelyHood = 0.0;
-                this.nextState.Normalize();
-                this.baseState.MergeNext(this.nextState, updateMergeRate);
-                this.nextState.Clear();
+                if (this.baseState.shouldRnadomInitialize)
+                {
+                    this.baseState.FullRandomInitialize();
+                }
+                else
+                {
+                    this.nextState.Normalize();
+                    this.baseState.MergeNext(this.nextState, updateMergeRate);
+                    this.nextState.Clear();
+                }
 
                 foreach (var document in this.documentHistory)
                 {
@@ -476,7 +539,6 @@ namespace Ribbon.WebCrawler
 
             this.nextState.Clear();
             this.documentHistory.Clear();
-
             this.currentLikelihood = 0.0;
             this.currentWordCount = 0.0;
         }
