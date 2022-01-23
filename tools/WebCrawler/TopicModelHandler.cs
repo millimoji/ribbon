@@ -37,7 +37,16 @@ namespace Ribbon.WebCrawler
                 foreach (var item in this.wordProbs)
                 {
                     var wordText = id2word(item.Key);
-                    var outputLine = wordText + "\t" + String.Join("\t", item.Value);
+                    var outputLine = wordText;
+                    foreach (var v in item.Value)
+                    {
+                        var sringify = v.ToString();
+                        outputLine += "\t" + sringify;
+                        if (Convert.ToDouble(sringify) >= 0.0)
+                        {
+                            throw new Exception("invalid format");
+                        }
+                    }
                     fileStream.WriteLine(outputLine);
                 }
             }
@@ -83,7 +92,14 @@ namespace Ribbon.WebCrawler
                     }
                     var singleWordProbs = this.GetProbsForWord(wordId);
                     TopicModelHandler.DoubleForEach(singleWordProbs, (double x, int idx) =>
-                        (idx < (wordLine.Length - 1)) ? Convert.ToDouble(wordLine[idx + 1]) : Math.Log(1.0 / singleWordProbs.Length / this.topicProbs.Length));
+                    {
+                        var value = (idx < (wordLine.Length - 1)) ? Convert.ToDouble(wordLine[idx + 1]) : Math.Log(1.0 / singleWordProbs.Length / this.topicProbs.Length);
+                        if (value >= 0.0)
+                        {
+                            throw new Exception("Invalid value");
+                        }
+                        return value;
+                    });
                 }
                 this.NormalizeWordProbs();
             }
@@ -173,9 +189,10 @@ namespace Ribbon.WebCrawler
             {
                 return probLine;
             }
+            // use same value to suppress to contribute to calculation Q at first time.
             probLine = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) =>
-                (1.0 / TopicModelHandler.updateWordCount * (double)random.Next(5000, 15000) / 1000.0));
+            var newValue = Math.Log(this.GetSmallShuffled(1.0 / TopicModelHandler.updateWordCount / 10.0));
+            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => newValue);
             this.wordProbs.Add(index, probLine);
             return probLine;
         }
@@ -228,24 +245,6 @@ namespace Ribbon.WebCrawler
                 {
                     var dstArray = this.wordProbs[wordId]; // logged
                     var srcArray = next.wordProbs[wordId]; // prob
-#if false // heuristics
-                    var sumDst = dstArray.Select(x => Math.Exp(x)).Sum();
-                    var entDst = - dstArray.Select(x => { var p = Math.Max(Math.Exp(x) / sumDst, 1/Single.MaxValue); return p * Math.Log(p); }).Sum();
-
-                    var sumSrc = srcArray.Sum();
-                    var entSrc = -srcArray.Select(x => { var p = Math.Max(x / sumSrc, 1/Single.MaxValue); return p * Math.Log(p); }).Sum();
-
-                    var dstRate = entSrc * (entDst + entSrc);
-                    var srcRate = entDst * (entDst + entSrc);
-
-                    TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
-                    {
-                        var value = Math.Exp(x) * dstRate + srcArray[idx] * srcRate;
-                        value = this.GetSmallShuffled(Math.Max(value, 1.0 / Single.MaxValue));
-                        sums[idx] += value;
-                        return value;
-                    });
-#else
                     TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
                     {
                         var value = Math.Exp(x) * keepRate + srcArray[idx] * newRate;
@@ -253,7 +252,6 @@ namespace Ribbon.WebCrawler
                         sums[idx] += value;
                         return value;
                     });
-#endif
                     ++i;
                     continue;
                 }
@@ -337,7 +335,7 @@ namespace Ribbon.WebCrawler
             this.shouldRnadomInitialize = false;
         }
 
-        private void NormalizeWordProbs()
+        public void NormalizeWordProbs()
         {
             var sums = new double[TopicModelHandler.TopicCount];
             TopicModelHandler.DoubleForEach(sums, (double x, int idx) => 0.0);
@@ -346,6 +344,10 @@ namespace Ribbon.WebCrawler
             {
                 TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
                 {
+                    if (x >= 0.0)
+                    {
+                        throw new Exception("invalid value range");
+                    }
                     var value = Math.Exp(x);
                     sums[idx] += value;
                     return value;
@@ -372,7 +374,7 @@ namespace Ribbon.WebCrawler
 
         private double GetSmallShuffled(double x)
         {
-            return x * (1.0 + 0.01 * (double)random.Next(0x10, 0x10000) / (double)0x10000);
+            return x * (1.0 - 0.01 * (double)random.Next(0x10, 0x10000) / (double)0x10000);
         }
     }
 
@@ -428,8 +430,8 @@ namespace Ribbon.WebCrawler
     public class TopicModelHandler
     {
         public const int TopicCount = 63; // 255;
-        public const double updateMergeRate = 0.9; // 0.9;
-        public const double updateWordCount = 1000; // 200000;
+        public const double updateMergeRate = 0.9;
+        public const double updateWordCount = 200000;
         public const int perplexHistMax = 100;
         public const int wordCountRequirement = 4;
 
@@ -460,6 +462,8 @@ namespace Ribbon.WebCrawler
 
         public void SaveToFile(string fileName, string summaryFilename, Func<int, string> id2Word)
         {
+            LearnLoopUntilPPTarget();
+
             this.baseState.SaveToFile(fileName, id2Word);
 
             {

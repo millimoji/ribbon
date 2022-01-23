@@ -26,13 +26,14 @@ namespace Ribbon.WebCrawler
             public HashSet<string> referenceUrls = new HashSet<string>();
         }
 
-        const int saveInternvalHour = 3; // 6;
+        const int saveInternvalHour = 6;
         const int parallelDownload = 20;
 
         MorphAnalyzer m_morphAnalyzer = new MorphAnalyzer(workingFolder);
         NGramStore m_nGraphStore = new NGramStore(workingFolder);
         DbAcccessor m_dbAcccessor = new DbAcccessor(workingFolder);
         public int lastSavedHour = DateTime.Now.Hour;
+        public int firstEveryHour = DateTime.Now.Hour + 1;
 
         void Run()
         {
@@ -117,14 +118,20 @@ namespace Ribbon.WebCrawler
 
                 if (m_nGraphStore.ShouldFlush())
                 {
+                    this.lastSavedHour = DateTime.Now.Hour;
                     m_nGraphStore.SaveFile();
                     m_nGraphStore.LoadFromFile(2);
-                    lastSavedHour = DateTime.Now.Hour;
                 }
-                else if (((lastSavedHour + saveInternvalHour) % 24) == DateTime.Now.Hour)
+                else if (((this.lastSavedHour + saveInternvalHour) % 24) == DateTime.Now.Hour)
                 {
+                    this.lastSavedHour = DateTime.Now.Hour;
+                    this.firstEveryHour = -1;
                     m_nGraphStore.SaveFile();
-                    lastSavedHour = DateTime.Now.Hour;
+                }
+                else if (this.firstEveryHour == DateTime.Now.Hour)
+                {
+                    this.firstEveryHour = DateTime.Now.Hour + 1;
+                    m_nGraphStore.SaveFile();
                 }
 
                 Console.WriteLine("End: LoadWebAndAnalyze");
