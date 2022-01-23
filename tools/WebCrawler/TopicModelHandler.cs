@@ -15,6 +15,9 @@ namespace Ribbon.WebCrawler
         private System.Random random = new System.Random();
         public bool shouldRnadomInitialize = true;
 
+        private double[] savedTopicsProbs;
+        private Dictionary<int, double[]> savedWordProbs;
+
         public TopicModelState()
         {
             this.topicProbs = this.CreateLoggedRandomArray(TopicModelHandler.TopicCount);
@@ -376,6 +379,46 @@ namespace Ribbon.WebCrawler
         {
             return x * (1.0 - 0.01 * (double)random.Next(0x10, 0x10000) / (double)0x10000);
         }
+
+        public void saveProbs()
+        {
+            this.savedTopicsProbs = (double[])this.topicProbs.Clone();
+            this.savedWordProbs = new Dictionary<int, double[]>();
+            foreach (var kv in this.wordProbs)
+            {
+                this.savedWordProbs.Add(kv.Key, (double[])kv.Value.Clone());
+            }
+        }
+
+        public void mergeProbs(double keepRate)
+        {
+            double newRate = 1.0 - keepRate;
+            double sum = 0.0;
+            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) =>
+            {
+                var valeu = Math.Exp(this.savedTopicsProbs[idx]) * keepRate + Math.Exp(x) * newRate;
+                sum += valeu;
+                return valeu;
+            });
+            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => Math.Log(x / sum));
+
+            foreach (var kv in this.wordProbs)
+            {
+                double[] oldData;
+                if (this.savedWordProbs.TryGetValue(kv.Key, out oldData))
+                {
+                    TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
+                    {
+                        return Math.Log(Math.Exp(oldData[idx]) * keepRate + Math.Exp(x) * newRate);
+                    });
+                }
+                else
+                {
+                    // keep new data??
+                }
+            }
+            this.NormalizeWordProbs();
+        }
     }
 
 
@@ -430,8 +473,8 @@ namespace Ribbon.WebCrawler
     public class TopicModelHandler
     {
         public const int TopicCount = 63; // 255;
-        public const double updateMergeRate = 0.99;
-        public const double updateWordCount = 1000; // 200000;
+        public const double updateMergeRate = 0.5;
+        public const double updateWordCount = 200000;
         public const int perplexHistMax = 100;
         public const int wordCountRequirement = 4;
 
@@ -502,7 +545,7 @@ namespace Ribbon.WebCrawler
 
         private void LearnLoopUntilPPTarget()
         {
-#if true
+#if false
             if (this.documentHistory.Count > 0)
             {
                 if (this.baseState.shouldRnadomInitialize)
@@ -533,6 +576,8 @@ namespace Ribbon.WebCrawler
 
             List<double> ppLocalHistory = new List<double>();
             ppLocalHistory.Add(initialPp);
+
+            this.baseState.saveProbs();
 
             for (var loopCount = 1; ; ++loopCount)
             {
@@ -565,6 +610,8 @@ namespace Ribbon.WebCrawler
                 }
                 Console.WriteLine($"[TopicModel - retry:[{loopCount}] pp:{currentPp}");
             }
+
+            this.baseState.mergeProbs(updateMergeRate);
 #endif
             this.nextState.Clear();
             this.documentHistory.Clear();
@@ -582,7 +629,7 @@ namespace Ribbon.WebCrawler
         private static Regex excludedWord = new Regex(@"(" +
                 @",動詞,自立,\*,\*,サ変・|" +
                 @",動詞,自立,\*,\*,カ変・|" +
-                @",動詞,自立,\*,*,五段・ラ行,.*,ある,|" +
+                @",動詞,自立,\*,\*,五段・ラ行,.*,ある,|" +
                 @",動詞,自立,\*,\*,五段・ラ行,.*,なる,|" +
                 @",動詞,自立,\*,\*,一段,.*,できる,|" +
                 @",動詞,自立,\*,\*,五段・ワ行促音便,.*,行う,|" +
