@@ -430,8 +430,8 @@ namespace Ribbon.WebCrawler
     public class TopicModelHandler
     {
         public const int TopicCount = 63; // 255;
-        public const double updateMergeRate = 0.9;
-        public const double updateWordCount = 200000;
+        public const double updateMergeRate = 0.99;
+        public const double updateWordCount = 1000; // 200000;
         public const int perplexHistMax = 100;
         public const int wordCountRequirement = 4;
 
@@ -502,6 +502,31 @@ namespace Ribbon.WebCrawler
 
         private void LearnLoopUntilPPTarget()
         {
+#if true
+            if (this.documentHistory.Count > 0)
+            {
+                if (this.baseState.shouldRnadomInitialize)
+                {
+                    this.baseState.FullRandomInitialize();
+                    this.nextState.Clear();
+                    var likelyHood = 0.0;
+                    foreach (var document in this.documentHistory)
+                    {
+                        var loggedQDenomi = this.baseState.CalculateQAndApply(document, this.nextState);
+                        likelyHood += loggedQDenomi;
+                    }
+                    var initialPp = Math.Exp(-likelyHood / this.currentWordCount);
+                    this.ppHist.Enqueue(initialPp);
+                }
+                else
+                {
+                    var initialPp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
+                    this.ppHist.Enqueue(initialPp);
+                }
+                this.nextState.Normalize();
+                this.baseState.MergeNext(this.nextState, updateMergeRate);
+            }
+#else
             var initialPp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
             this.ppHist.Enqueue(initialPp);
             Console.WriteLine($"[TopicModel - initial] pp:{initialPp}, word:{this.baseState.GetWordCount()} pp-ave:{this.GetPerplexyAvarage()}");
@@ -520,8 +545,8 @@ namespace Ribbon.WebCrawler
                 {
                     this.nextState.Normalize();
                     this.baseState.MergeNext(this.nextState, updateMergeRate);
-                    this.nextState.Clear();
                 }
+                this.nextState.Clear();
 
                 foreach (var document in this.documentHistory)
                 {
@@ -540,7 +565,7 @@ namespace Ribbon.WebCrawler
                 }
                 Console.WriteLine($"[TopicModel - retry:[{loopCount}] pp:{currentPp}");
             }
-
+#endif
             this.nextState.Clear();
             this.documentHistory.Clear();
             this.currentLikelihood = 0.0;
@@ -553,8 +578,17 @@ namespace Ribbon.WebCrawler
         }
 
         private static Regex matchNoReading = new Regex(@",\*,\*$");
-        private static Regex excludedPos = new Regex(@"(,名詞,数,|,助詞,|,助動詞,|,接頭詞,|,記号,|,非自立,|,接尾,|,副詞可能,|,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,)");
-        private static Regex excludedWord = new Regex(@"(,動詞,自立,\*,\*,サ変・|,動詞,自立,\*,\*,カ変・)");
+        private static Regex excludedPos = new Regex(@"(,名詞,数,|,助詞,|,助動詞,|,接続詞,|,接頭詞,|,記号,|,非自立,|,接尾,|,副詞可能,|,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,)");
+        private static Regex excludedWord = new Regex(@"(" +
+                @",動詞,自立,\*,\*,サ変・|" +
+                @",動詞,自立,\*,\*,カ変・|" +
+                @",動詞,自立,\*,*,五段・ラ行,.*,ある,|" +
+                @",動詞,自立,\*,\*,五段・ラ行,.*,なる,|" +
+                @",動詞,自立,\*,\*,一段,.*,できる,|" +
+                @",動詞,自立,\*,\*,五段・ワ行促音便,.*,行う,|" +
+                @"^この,連体詞,|" +
+                @"^その,連体詞," +
+            ")");
 
         public static bool isTargetWord(string word)
         {
