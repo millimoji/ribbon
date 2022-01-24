@@ -104,6 +104,7 @@ ko.components.register("root-node", {
 		me.generatedTime = me.dataModel.generatedTime;
 		me.onLoadTopicModel = function () { me.dataModel.reloadJson(false); };
 		me.onLoadMixUnigram = function () { me.dataModel.reloadJson(true); };
+		me.dataModel.reloadJson(false);
 	}
 });
 
@@ -136,8 +137,9 @@ ko.components.register("topic-word-list", {
 		var me = this;
 		me.wordList = params.wordList;
 		me.title = (params.index() == 0) ? "Low Entropy" :
-					(params.index() == 1) ? "High Entropy" :
-					("Topic " + (params.index() - 1).toString());
+					(params.index() == 1) ? "Low P * Entropy" :
+					(params.index() == 2) ? "High Entropy" :
+					("Topic " + (params.index() - 2).toString());
 	}
 });
 

@@ -301,7 +301,7 @@ namespace Ribbon.WebCrawler
         {
             this.nextWordProbs = new Dictionary<int, double[]>(); // reset
 
-            var randomRange = (this.wordProbs.Count == 0) ? 1.0 : (1.0 / TopicModelHandler.updateWordCount);
+            var randomRange = (this.wordProbs.Count == 0) ? 1.0 : (1.0 / TopicModelHandler.estimatedFilledWordCount);
             HashSet<int> idArray = new HashSet<int>();
             foreach (var doc in documents) { foreach (var wordId in doc) { idArray.Add(wordId); } }
             foreach (var wordId in idArray)
@@ -311,7 +311,7 @@ namespace Ribbon.WebCrawler
                 {
                     wordProb = new double[TopicModelHandler.TopicCount];
                     TopicModelHandler.DoubleForEach(wordProb, (double x, int idx) =>
-                        ((double)this.random.Next(1, 999999) / 1000000.0 * randomRange + 1.0 / TopicModelHandler.updateWordCount));
+                        ((double)this.random.Next(1, 999999) / 1000000.0 * randomRange + 1.0 / TopicModelHandler.estimatedFilledWordCount));
                     this.wordProbs.Add(wordId, wordProb);
                 }
                 // zero clear for next word
@@ -363,12 +363,12 @@ namespace Ribbon.WebCrawler
 
         private double GetSmallRandomNumber()
         {
-            return (double)random.Next(10, 99999) / (double)100000 * (1.0 / TopicModelHandler.updateWordCount) + (1.0 / TopicModelHandler.updateWordCount);
+            return (double)random.Next(10, 99999) / (double)100000 * (1.0 / TopicModelHandler.estimatedFilledWordCount) + (1.0 / TopicModelHandler.estimatedFilledWordCount);
         }
 
         private double GetRandomNumber()
         {
-            return (double)random.Next(10, 99999) / (double)100000 + 1.0 / TopicModelHandler.updateWordCount;
+            return (double)random.Next(10, 99999) / (double)100000 + 1.0 / TopicModelHandler.estimatedFilledWordCount;
         }
 
         private double GetSmallShuffled(double x)
@@ -383,44 +383,53 @@ namespace Ribbon.WebCrawler
     {
         public const int TopicCount = 63; // 255;
         public const double updateMergeRate = 0.5;
-        public const double updateWordCount = 200000;
+        public const double updateUniqueWord = 20000;
         public const int perplexHistMax = 50;
         public const int wordCountRequirement = 4;
+        public const double estimatedFilledWordCount = 10.0 * updateUniqueWord;
 
         private TopicModelState baseState;
         private Queue<double> ppHist = new Queue<double>();
         private List<List<int>> documentHistory = new List<List<int>>();
+        private HashSet<int> uniqueWord = new HashSet<int>();
         private bool isMixUniModel = false;
         private string logPrefix;
-
-        double currentWordCount = 0.0;
-
 
         public TopicModelHandler(bool isMixUnigram)
         {
             this.isMixUniModel = isMixUnigram;
             this.baseState = new TopicModelState();
             this.logPrefix = this.isMixUniModel ? "MixUnigram" : "TopicModel";
+
+            this.ClearStoredData();
         }
 
         public void LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word)
         {
-            this.documentHistory.Clear();
-            this.ppHist.Clear();
-            this.currentWordCount = 0.0;
+            this.ClearStoredData();
 
             this.baseState.LoadFromFile(fileName, word2id, id2word);
         }
 
+        private void ClearStoredData()
+        {
+            this.documentHistory.Clear();
+            this.uniqueWord.Clear();
+            this.ppHist.Clear();
+            this.ppHist.Enqueue(0.0);
+        }
+
         public void SaveToFile(string fileName, string summaryFilename, Func<int, string> id2Word)
         {
-            LearnLoopUntilPPTarget();
+            // Stop to flush. This must have bad impact on model.
+            // LearnLoopUntilPPTarget();
+            this.ClearStoredData();
 
             this.baseState.SaveToFile(fileName, id2Word);
 
             {
                 var summarizer = new JsonSummarizer();
-                summarizer.Serialize(summaryFilename, this.GetPerplexyAvarage(), this.baseState.wordProbs, id2Word);
+                summarizer.Serialize(summaryFilename, this.ppHist.Average(), this.baseState.wordProbs, id2Word);
             }
         }
 
@@ -433,9 +442,9 @@ namespace Ribbon.WebCrawler
             }
 
             this.documentHistory.Add(listId);
-            this.currentWordCount += (double)listId.Count;
+            listId.ForEach(x => this.uniqueWord.Add(x));
 
-            if (this.currentWordCount >= updateWordCount)
+            if (this.uniqueWord.Count >= TopicModelHandler.updateUniqueWord)
             {
                 LearnLoopUntilPPTarget();
             }
@@ -444,7 +453,8 @@ namespace Ribbon.WebCrawler
         public void PrintCurretState()
         {
             var lastPp = this.ppHist.Count == 0 ? 0.0 : this.ppHist.Last();
-            Console.WriteLine($"[{this.logPrefix}] pp:{lastPp}, word:{this.baseState.GetWordCount()}, dos:{this.documentHistory.Count}, words:{this.currentWordCount}, pp-ave:{this.GetPerplexyAvarage()}");
+            Console.WriteLine($"[{this.logPrefix}] pp:{lastPp}, word:{this.baseState.GetWordCount()}, dos:{this.documentHistory.Count}, words:{this.uniqueWord.Count}, " +
+                    $"pp-ave:{this.ppHist.Average()}, pp-min:{this.ppHist.Min()}");
         }
 
         private void LearnLoopUntilPPTarget()
@@ -462,15 +472,23 @@ namespace Ribbon.WebCrawler
                         this.baseState.CalculateMixtureUnigramModel(this.documentHistory, TopicModelHandler.updateMergeRate) :
                         this.baseState.CalculateTopicModel(this.documentHistory, TopicModelHandler.updateMergeRate);
 
-                Console.WriteLine($"[{this.logPrefix}:{loopCount}] pp:{currentPp}, word:{this.baseState.GetWordCount()}, dos:{this.documentHistory.Count}, words:{this.currentWordCount}, pp-ave:{this.GetPerplexyAvarage()}");
+                Console.WriteLine($"[{this.logPrefix}:{loopCount}] pp:{currentPp}, word:{this.baseState.GetWordCount()}");
 
                 if (ppLocalHist.Count > 0)
                 {
-                    var goNext = ppLocalHist.Skip(Math.Max(ppLocalHist.Count - 5, 0)).All(x => Math.Abs(x - currentPp) < currentPp * 0.08);
+                    var goNext = ppLocalHist.Skip(Math.Max(ppLocalHist.Count - 5, 0)).All(x => Math.Abs(x - currentPp) < currentPp * 0.1);
                     if (goNext)
                     {
-                        this.ppHist.Enqueue(currentPp);
                         break;
+                    }
+                }
+                else
+                {
+                    if (this.ppHist.Count == 1 && this.ppHist.Last() == 0.0) this.ppHist.Clear();
+                    this.ppHist.Enqueue(currentPp);
+                    while (this.ppHist.Count > perplexHistMax)
+                    {
+                        this.ppHist.Dequeue();
                     }
                 }
                 ppLocalHist.Add(currentPp);
@@ -478,75 +496,9 @@ namespace Ribbon.WebCrawler
 
             this.baseState.MergeWordList(TopicModelHandler.updateMergeRate, currentModel.wordProbs, this.baseState.wordProbs);
             this.baseState.wordProbs = currentModel.wordProbs;
-#if false
-            if (this.documentHistory.Count > 0)
-            {
-                if (this.baseState.shouldRnadomInitialize)
-                {
-                    this.baseState.FullRandomInitialize();
-                    this.nextState.Clear();
-                    var likelyHood = 0.0;
-                    foreach (var document in this.documentHistory)
-                    {
-                        var loggedQDenomi = this.baseState.CalculateQAndApply(document, this.nextState);
-                        likelyHood += loggedQDenomi;
-                    }
-                    var initialPp = Math.Exp(-likelyHood / this.currentWordCount);
-                    this.ppHist.Enqueue(initialPp);
-                }
-                else
-                {
-                    var initialPp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
-                    this.ppHist.Enqueue(initialPp);
-                }
-                this.nextState.Normalize();
-                this.baseState.MergeNext(this.nextState, updateMergeRate);
-            }
-            var initialPp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
-            this.ppHist.Enqueue(initialPp);
-            Console.WriteLine($"[TopicModel - initial] pp:{initialPp}, word:{this.baseState.GetWordCount()} pp-ave:{this.GetPerplexyAvarage()}");
 
-            List<double> ppLocalHistory = new List<double>();
-            ppLocalHistory.Add(initialPp);
-
-            this.baseState.saveProbs();
-
-            for (var loopCount = 1; ; ++loopCount)
-            {
-                var likelyHood = 0.0;
-                if (this.baseState.shouldRnadomInitialize)
-                {
-                    this.baseState.FullRandomInitialize();
-                }
-                else
-                {
-                    this.nextState.Normalize();
-                    this.baseState.MergeNext(this.nextState, updateMergeRate);
-                }
-                this.nextState.Clear();
-
-                foreach (var document in this.documentHistory)
-                {
-                    var loggedQDenomi = this.baseState.CalculateQAndApply(document, this.nextState);
-                    likelyHood += loggedQDenomi;
-                }
-
-                var currentPp = Math.Exp(-likelyHood / this.currentWordCount);
-                ppLocalHistory.Add(currentPp);
-
-                var goNext = ppLocalHistory.Skip(Math.Max(ppLocalHistory.Count - 5, 0)).All(x => Math.Abs(x - currentPp) < currentPp * 0.1);
-                if (goNext)
-                {
-                    Console.WriteLine($"[TopicModel - Ok:[{loopCount}] pp:{currentPp}");
-                    break;
-                }
-                Console.WriteLine($"[TopicModel - retry:[{loopCount}] pp:{currentPp}");
-            }
-
-            this.baseState.mergeProbs(updateMergeRate);
-#endif
             this.documentHistory.Clear();
-            this.currentWordCount = 0.0;
+            this.uniqueWord.Clear();
         }
 
         private List<int> WordArrayToIntArray(List<string> document, Func<string, int> word2id)

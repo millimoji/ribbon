@@ -35,13 +35,17 @@ namespace Ribbon.WebCrawler
         public void Serialize(
             string fileName,
             double perplexity,
-            Dictionary<int, double[]> topicLogWordRate,
+            Dictionary<int, double[]> wordProbMatrix,
             Func<int, string> id2word)
         {
+            if (wordProbMatrix.Count == 0)
+            {
+                return;
+            }
             var summary = new Ribbon.WebCrawler.JsonType.SummaryStruct();
             summary.generatedTime = DateTime.Now.ToString();
             summary.tps.perplexity = Double.IsInfinity(perplexity) || Double.IsNaN(perplexity) ? 0.0 : perplexity;
-            summary.topicModel = this.MakeTopicModelSummary(topicLogWordRate, id2word);
+            summary.topicModel = this.MakeTopicModelSummary(wordProbMatrix, id2word);
 
             using (var fs = File.Create(fileName))
             {
@@ -55,43 +59,53 @@ namespace Ribbon.WebCrawler
         }
 
         private List<JsonType.WP[]> MakeTopicModelSummary(
-            Dictionary<int, double[]> topicLogWordRate,
+            Dictionary<int, double[]> wordProbMatrix,
             Func<int, string> id2word)
         {
             var topicData = new List<JsonType.WP[]>();
 
-            var entroyList = topicLogWordRate
+            var topicCount = wordProbMatrix.First().Value.Length;
+            var log2 = Math.Log(2.0);
+            var logTC = - Math.Log(1.0 / (double)topicCount);
+            var entroyList = wordProbMatrix
                 .Select(x =>
                 {
-                    var sum = x.Value.Select(l => Math.Exp(l)).Sum();
+                    var sum = x.Value.Sum();
                     var pLogP = x.Value.Select(l =>
                     {
-                        var p = Math.Exp(l) / sum;
-                        var itempLogP = p * Math.Log(p);
+                        var p = l / sum;
+                        var itempLogP = p * Math.Log(p) / log2;
                         return itempLogP;
                     });
                     var entropy = - pLogP.Sum();
-                    return new Tuple<int, double>(x.Key, entropy);
+                    var pEntropy = sum * entropy / logTC;
+                    return new Tuple<string, double, double>(id2word(x.Key), entropy, pEntropy);
                 });
 
             // order by low entropy
             topicData.Add(entroyList
                 .OrderBy(x => x.Item2)
                 .Take(summryItemCount)
-                .Select(x => new JsonType.WP { w = id2word(x.Item1), p = x.Item2 })
+                .Select(x => new JsonType.WP { w = x.Item1, p = x.Item2 })
+                .ToArray());
+
+            // order by low entropy * propability
+            topicData.Add(entroyList
+                .OrderBy(x => x.Item3)
+                .Take(summryItemCount)
+                .Select(x => new JsonType.WP { w = x.Item1, p = x.Item3 })
                 .ToArray());
 
             // order by high entropy
             topicData.Add(entroyList
                 .OrderByDescending(x => x.Item2)
                 .Take(summryItemCount)
-                .Select(x => new JsonType.WP { w = id2word(x.Item1), p = x.Item2 })
+                .Select(x => new JsonType.WP { w = x.Item1, p = x.Item2 })
                 .ToArray());
 
-            var topicCount = topicLogWordRate.First().Value.Length;
             for (int topic = 0; topic < topicCount; ++topic)
             {
-                var sortByProb = topicLogWordRate
+                var sortByProb = wordProbMatrix
                     .Select(x => new Tuple<int, double>(x.Key, x.Value[topic]))
                     .OrderByDescending(x => x.Item2)
                     .Take(summryItemCount)
