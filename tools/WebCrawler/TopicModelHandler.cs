@@ -10,33 +10,26 @@ namespace Ribbon.WebCrawler
 {
     class TopicModelState
     {
-        private double[] topicProbs; // log
-        public Dictionary<int, double[]> wordProbs; // log
-        private System.Random random = new System.Random();
-        public bool shouldRnadomInitialize = true;
+        // for mixture model;
+        private double[] topicProb = new double[TopicModelHandler.TopicCount];
 
-        private double[] savedTopicsProbs;
-        private Dictionary<int, double[]> savedWordProbs;
+        // for topic model
+        private double[][] topicProbs;
+
+        public Dictionary<int, double[]> wordProbs;
+        public Dictionary<int, double[]> nextWordProbs;
+
+        private System.Random random = new System.Random();
 
         public TopicModelState()
         {
-            this.topicProbs = this.CreateLoggedRandomArray(TopicModelHandler.TopicCount);
             this.wordProbs = new Dictionary<int, double[]>();
-        }
-
-        public int GetWordCount()
-        {
-            return this.wordProbs.Count;
         }
 
         public void SaveToFile(string fileName, Func<int, string> id2word)
         {
             using (StreamWriter fileStream = new StreamWriter(fileName, false, Encoding.Unicode))
             {
-                {
-                    var outputLine = "[Topic]\t" + String.Join("\t", this.topicProbs);
-                    fileStream.WriteLine(outputLine);
-                }
                 foreach (var item in this.wordProbs)
                 {
                     var wordText = id2word(item.Key);
@@ -45,7 +38,7 @@ namespace Ribbon.WebCrawler
                     {
                         var sringify = v.ToString();
                         outputLine += "\t" + sringify;
-                        if (Convert.ToDouble(sringify) >= 0.0)
+                        if (Convert.ToDouble(sringify) < 0.0)
                         {
                             throw new Exception("invalid format");
                         }
@@ -61,24 +54,9 @@ namespace Ribbon.WebCrawler
             {
                 return false;
             }
-            this.shouldRnadomInitialize = false;
             using (StreamReader fileStream = new StreamReader(fileName))
             {
                 string line = fileStream.ReadLine();
-                string[] headerLine = line.Split('\t');
-                if (headerLine[0] != "[Topic]")
-                {
-                    return false;
-                }
-
-                double sum = 0.0;
-                TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) =>
-                {
-                    var value = (idx < (headerLine.Length - 1)) ? Math.Exp(Convert.ToDouble(headerLine[idx + 1])) : this.GetSmallShuffled(1.0 / (double)this.topicProbs.Length);
-                    sum += value;
-                    return value;
-                });
-                TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => Math.Log(x / sum));
 
                 this.wordProbs = new Dictionary<int, double[]>(); // clear
                 while ((line = fileStream.ReadLine()) != null)
@@ -93,111 +71,262 @@ namespace Ribbon.WebCrawler
                     {
                         continue;
                     }
-                    var singleWordProbs = this.GetProbsForWord(wordId);
-                    TopicModelHandler.DoubleForEach(singleWordProbs, (double x, int idx) =>
+                    var wordPob = new double[TopicModelHandler.TopicCount];
+                    TopicModelHandler.DoubleForEach(wordPob, (double x, int idx) =>
                     {
-                        var value = (idx < (wordLine.Length - 1)) ? Convert.ToDouble(wordLine[idx + 1]) : Math.Log(1.0 / singleWordProbs.Length / this.topicProbs.Length);
-                        if (value >= 0.0)
-                        {
-                            throw new Exception("Invalid value");
-                        }
-                        return value;
+                        return (idx < (wordLine.Length - 1)) ? Convert.ToDouble(wordLine[idx + 1]) : this.GetRandomNumber();
                     });
                 }
-                this.NormalizeWordProbs();
+                this.NormalizeWordList(this.wordProbs);
             }
 
             return true;
         }
 
-        private double[] CreateLoggedRandomArray(int size)
+        #region MixtureUnigramModel
+        public bool PrepareMixtureUnigramModel(List<List<int>> documents)
         {
-            var array = new double[size];
-            var sum = 0.0;
-            TopicModelHandler.DoubleForEach(array, (double x, int idx) =>
+            Func<bool> MakeInitialTopic = () =>
             {
-                var value = this.GetRandomNumber();
-                sum += value;
-                return value;
-            });
-            TopicModelHandler.DoubleForEach(array, (double x, int idx) => Math.Log(x / sum));
-            return array;
-        }
-
-#if false
-        // Topic Model
-        public double CalculateQAndApply(List<int> wordIds, TopicModelNext next)
-        {
-            var work = new double[TopicModelHandler.TopicCount];
-            var loggedLikelyhood = 0.0;
-
-            foreach (var wordId in wordIds)
-            {
-                var probs = this.GetProbsForWord(wordId);
-                work[0] = this.topicProbs[0] + probs[0];
-                var qLoggedDenomi = work[0];
-                for (int i = 1; i < work.Length; ++i)
+                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => 0.0);
+                bool foundAtLeast = false;
+                foreach (var doc in documents)
                 {
-                    work[i] = this.topicProbs[i] + probs[i];
-                    qLoggedDenomi = this.AddLogedProb(qLoggedDenomi, work[i]);
+                    foreach (var wordId in doc)
+                    {
+                        double[] wordPob;
+                        if (this.wordProbs.TryGetValue(wordId, out wordPob))
+                        {
+                            foundAtLeast = true;
+                            TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => (x + wordPob[idx]));
+                        }
+                    }
                 }
-                loggedLikelyhood += qLoggedDenomi;
-
-                TopicModelHandler.DoubleForEach(work, (double x, int idx) => Math.Exp(x - qLoggedDenomi)); // convert to probability
-
-                TopicModelHandler.DoubleForEach(next.topicProbs, (double x, int idx) => (x + work[idx]));
-                foreach (var targetWordId in wordIds)
+                if (foundAtLeast)
                 {
-                    var targetProbs = next.GetProbsForWord(targetWordId);
-                    TopicModelHandler.DoubleForEach(targetProbs, (double x, int idx) => (x + work[idx]));
+                    this.NormalizeDoubleList(this.topicProb);
+                    return true;
+                }
+                return false;
+            };
+
+            if (this.wordProbs.Count == 0 || !MakeInitialTopic())
+            {
+                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => this.GetRandomNumber());
+                this.NormalizeDoubleList(this.topicProb);
+            }
+
+            this.PrepareForNewWordSet(documents);
+            return true;
+        }
+
+        public double CalculateMixtureUnigramModel(List<List<int>> documents, double oldRate)
+        {
+            var likeliHood = 0.0;
+            var wordCount = 0;
+
+            double[] nextTopic = new double[TopicModelHandler.TopicCount];
+            TopicModelHandler.DoubleForEach(nextTopic, (double x, int idx) => 0.0);
+            foreach (var kv in this.nextWordProbs)
+            {
+                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => 0.0);
+            }
+
+            double[] qWork = new double[TopicModelHandler.TopicCount];
+
+            foreach (var doc in documents)
+            {
+                // 
+                TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => 0.0);
+                foreach (var wordId in doc)
+                {
+                    var wordPobs = this.wordProbs[wordId];
+                    TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => x + Math.Log(Math.Max(wordPobs[idx], 1.0 / Single.MaxValue)));
+                }
+                var loggedSum = qWork[0];
+                for (int i = 0; i < TopicModelHandler.TopicCount; ++i)
+                {
+                    loggedSum = this.AddLogedProb(loggedSum, qWork[i]);
+                }
+                TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => Math.Exp(x - loggedSum));
+                likeliHood += loggedSum;
+                wordCount += doc.Count;
+
+                // apply to next
+                TopicModelHandler.DoubleForEach(nextTopic, (double x, int idx) => x + qWork[idx]);
+                foreach (var wordId in doc)
+                {
+                    var nextWordProb = this.nextWordProbs[wordId];
+                    TopicModelHandler.DoubleForEach(nextWordProb, (double x, int idx) => x + qWork[idx]);
                 }
             }
 
-            return loggedLikelyhood;
+            // apply to main
+            this.topicProb = nextTopic;
+
+            this.NormalizeWordList(this.nextWordProbs);
+            this.MergeWordList(oldRate, this.wordProbs, this.nextWordProbs);
+            this.NormalizeWordList(this.wordProbs);
+
+            var perplexity = Math.Exp(-likeliHood / wordCount);
+            return perplexity;
         }
-#else
-        // Mixture Unigram Model
-        public double CalculateQAndApply(List<int> wordIds, TopicModelNext next)
+        #endregion
+
+        #region TopicModel
+        public bool PrepareTopicModel(List<List<int>> documents)
         {
-            var work = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(work, (double x, int idx) => this.topicProbs[idx]);
-
-            foreach (var wordId in wordIds)
+            this.topicProbs = new double[documents.Count][];
+            for (var docIdx = 0; docIdx < documents.Count; ++docIdx)
             {
-                var probs = this.GetProbsForWord(wordId);
-                TopicModelHandler.DoubleForEach(work, (double x, int idx) => (x + probs[idx]));
-            }
-            var qLoggedDenomi = work[0];
-            for (int i = 1; i < work.Length; ++i)
-            {
-                qLoggedDenomi = this.AddLogedProb(qLoggedDenomi, work[i]);
+                var tmTopicProb = new double[TopicModelHandler.TopicCount];
+                TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => 0.0);
+                this.topicProbs[docIdx] = tmTopicProb;
+
+                var doc = documents[docIdx];
+                bool foundAtLeast = false;
+
+                foreach (var wordId in doc)
+                {
+                    double[] wordPob;
+                    if (this.wordProbs.TryGetValue(wordId, out wordPob))
+                    {
+                        foundAtLeast = true;
+                        TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => (x + wordPob[idx]));
+                    }
+                }
+
+                if (!foundAtLeast)
+                {
+                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => this.GetRandomNumber());
+                    this.NormalizeDoubleList(tmTopicProb);
+                }
+                else
+                {
+                    this.NormalizeDoubleList(tmTopicProb);
+                    // to suppress touch 0
+                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x * 0.98 + 0.02);
+                    this.NormalizeDoubleList(tmTopicProb);
+                }
             }
 
-            TopicModelHandler.DoubleForEach(work, (double x, int idx) => Math.Exp(x - qLoggedDenomi)); // convert to probability
-
-            TopicModelHandler.DoubleForEach(next.topicProbs, (double x, int idx) => (x + wordIds.Count * work[idx])); // Heuristics: multiply word count
-            foreach (var targetWordId in wordIds)
-            {
-                var targetProbs = next.GetProbsForWord(targetWordId);
-                TopicModelHandler.DoubleForEach(targetProbs, (double x, int idx) => (x + work[idx]));
-            }
-            return qLoggedDenomi;
+            this.PrepareForNewWordSet(documents);
+            return true;
         }
-#endif
 
-        private double[] GetProbsForWord(int index)
+        public double CalculateTopicModel(List<List<int>> documents, double oldRate)
         {
-            double[] probLine;
-            if (this.wordProbs.TryGetValue(index, out probLine))
+            var likeliHood = 0.0;
+            var wordCount = 0;
+
+            foreach (var kv in this.nextWordProbs)
             {
-                return probLine;
+                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => 0.0);
             }
-            // use same value to suppress to contribute to calculation Q at first time.
-            probLine = new double[TopicModelHandler.TopicCount];
-            var newValue = Math.Log(this.GetSmallShuffled(1.0 / TopicModelHandler.updateWordCount / 10.0));
-            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => newValue);
-            this.wordProbs.Add(index, probLine);
-            return probLine;
+
+            var qWork = new double[TopicModelHandler.TopicCount];
+
+            for (int docIdx = 0; docIdx < documents.Count; ++docIdx)
+            {
+                var doc = documents[docIdx];
+                var currentTopic = this.topicProbs[docIdx];
+
+                // 
+                TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => 0.0);
+                foreach (var wordId in doc)
+                {
+                    var wordPob = this.wordProbs[wordId];
+                    TopicModelHandler.DoubleForEach(qWork, (double x, int idx) =>
+                        (x + Math.Log(Math.Max(currentTopic[idx], 1.0 / Single.MaxValue)) + Math.Log(Math.Max(wordPob[idx], 1.0 / Single.MaxValue))));
+                }
+                var loggedSum = qWork[0];
+                for (int i = 0; i < TopicModelHandler.TopicCount; ++i)
+                {
+                    loggedSum = this.AddLogedProb(loggedSum, qWork[i]);
+                }
+                TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => Math.Exp(x - loggedSum));
+                likeliHood += loggedSum;
+                wordCount += doc.Count;
+
+                // apply to next
+                TopicModelHandler.DoubleForEach(currentTopic, (double x, int idx) => qWork[idx]);
+                this.NormalizeDoubleList(currentTopic);
+
+                foreach (var wordId in doc)
+                {
+                    var nextWordProb = this.nextWordProbs[wordId];
+                    TopicModelHandler.DoubleForEach(nextWordProb, (double x, int idx) => x + qWork[idx]);
+                }
+            }
+
+            // apply to main
+            this.NormalizeWordList(this.nextWordProbs);
+            this.MergeWordList(oldRate, this.wordProbs, this.nextWordProbs);
+            this.NormalizeWordList(this.wordProbs);
+
+            var perplexity = Math.Exp(-likeliHood / wordCount);
+            return perplexity;
+        }
+        #endregion
+
+        public TopicModelState DeepCopy()
+        {
+            var cloned = new TopicModelState();
+            foreach (var kv in this.wordProbs)
+            {
+                cloned.wordProbs.Add(kv.Key, (double[])kv.Value.Clone());
+            }
+            return cloned;
+        }
+
+        public void MergeWordList(double oldRate, Dictionary<int, double[]> dstWordProbs, Dictionary<int, double[]> newWordProbs)
+        {
+            var newRate = 1.0 - oldRate;
+            foreach (var kv in newWordProbs)
+            {
+                double[] dstWordProb;
+                if (dstWordProbs.TryGetValue(kv.Key, out dstWordProb))
+                {
+                    TopicModelHandler.DoubleForEach(dstWordProb, (double x, int idx) => (x * oldRate + kv.Value[idx] * newRate));
+                }
+                else
+                {
+                    dstWordProbs.Add(kv.Key, (double[])kv.Value.Clone());
+                }
+            }
+            this.NormalizeWordList(this.wordProbs);
+        }
+
+        public void PrepareForNewWordSet(List<List<int>> documents)
+        {
+            this.nextWordProbs = new Dictionary<int, double[]>(); // reset
+
+            var randomRange = (this.wordProbs.Count == 0) ? 1.0 : (1.0 / TopicModelHandler.updateWordCount);
+            HashSet<int> idArray = new HashSet<int>();
+            foreach (var doc in documents) { foreach (var wordId in doc) { idArray.Add(wordId); } }
+            foreach (var wordId in idArray)
+            {
+                double[] wordProb;
+                if (!this.wordProbs.TryGetValue(wordId, out wordProb))
+                {
+                    wordProb = new double[TopicModelHandler.TopicCount];
+                    TopicModelHandler.DoubleForEach(wordProb, (double x, int idx) =>
+                        ((double)this.random.Next(1, 999999) / 1000000.0 * randomRange + 1.0 / TopicModelHandler.updateWordCount));
+                    this.wordProbs.Add(wordId, wordProb);
+                }
+                // zero clear for next word
+                if (!this.nextWordProbs.TryGetValue(wordId, out wordProb))
+                {
+                    wordProb = new double[TopicModelHandler.TopicCount];
+                    this.nextWordProbs.Add(wordId, wordProb);
+                }
+            }
+            this.NormalizeWordList(this.wordProbs);
+        }
+
+        public int GetWordCount()
+        {
+            return this.wordProbs.Count;
         }
 
         private double AddLogedProb(double logA, double logB)
@@ -212,292 +341,72 @@ namespace Ribbon.WebCrawler
             return logA + Math.Log(1.0 + Math.Exp(logB - logA));
         }
 
-        public void MergeNext(TopicModelNext next, double keepRate)
+        private void NormalizeDoubleList(double [] target)
         {
-            double newRate = 1.0 - keepRate;
-            double sum = 0.0;
-            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) =>
-            {
-                var value = Math.Exp(x) * keepRate + next.topicProbs[idx] * newRate;
-                value = this.GetSmallShuffled(value);
-                sum += value;
-                return value;
-            });
-            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => Math.Log(x / sum));
+            var sum = Math.Max(target.Sum(), 1.0 / Single.MaxValue);
+            TopicModelHandler.DoubleForEach(target, (double x, int idx) => (x / sum));
+        }
 
-            int[] indexArray = new int[this.wordProbs.Count + next.wordProbs.Count];
-            {
-                int i = 0;
-                foreach (var kv in this.wordProbs)
-                {
-                    indexArray[i++] = kv.Key;
-                }
-                foreach (var kv in next.wordProbs)
-                {
-                    indexArray[i++] = kv.Key;
-                }
-            }
-            Array.Sort(indexArray);
+        private void NormalizeWordList(Dictionary<int, double[]> wordList)
+        {
             var sums = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(sums, (double x, int idx) => 0.0);
-
-            for (int i = 0; i < indexArray.Length; ++i)
+            TopicModelHandler.DoubleForEach(sums, (double x, int idx) => (1.0 / Single.MaxValue));
+            foreach (var kv in wordList)
             {
-                var wordId = indexArray[i];
-                if ((i < (indexArray.Length - 1)) && wordId == indexArray[i + 1])
-                {
-                    var dstArray = this.wordProbs[wordId]; // logged
-                    var srcArray = next.wordProbs[wordId]; // prob
-                    TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
-                    {
-                        var value = Math.Exp(x) * keepRate + srcArray[idx] * newRate;
-                        value = this.GetSmallShuffled(Math.Max(value, 1.0 / Single.MaxValue));
-                        sums[idx] += value;
-                        return value;
-                    });
-                    ++i;
-                    continue;
-                }
-                {
-                    double[] dstArray;
-                    if (this.wordProbs.TryGetValue(indexArray[i], out dstArray))
-                    {
-                        TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
-                        {
-                            var value = Math.Exp(x) * keepRate;
-                            value = this.GetSmallShuffled(Math.Max(value, 1.0 / Single.MaxValue));
-                            sums[idx] += value;
-                            return value;
-                        });
-                    }
-                    else
-                    {
-                        // logically, this path should not happen
-                        dstArray = this.GetProbsForWord(wordId);
-                        var srcArray = next.wordProbs[wordId]; // prob
-                        TopicModelHandler.DoubleForEach(dstArray, (double x, int idx) =>
-                        {
-                            var value = srcArray[idx] * newRate;
-                            value = this.GetSmallShuffled(Math.Max(value, 1.0 / Single.MaxValue));
-                            sums[idx] += value;
-                            return value;
-                        });
-                    }
-                }
+                TopicModelHandler.DoubleForEach(sums, (double x, int idx) => (x + kv.Value[idx]));
             }
-            // normalize
-            foreach (var kv in this.wordProbs)
+            foreach (var kv in wordList)
             {
-                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
-                {
-                    var value = Math.Log(x / sums[idx]);
-                    if (value >= 0.0)
-                    {
-                        throw new Exception("invalid value range");
-                    }
-                    return value;
-                });
+                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => (x / sums[idx]));
             }
         }
 
-        public void FullRandomInitialize()
+        private double GetSmallRandomNumber()
         {
-            double sum = 0.0;
-            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) =>
-            {
-                var value = (double)random.Next(100, 10000) / (double)10000.0;
-                sum += value;
-                return value;
-            });
-            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => Math.Log(x / sum));
-
-            var sums = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(sums, (double x, int idx) => 0.0);
-
-            foreach (var kv in this.wordProbs)
-            {
-                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
-                {
-                    var value = (double)random.Next(100, 10000) / (double)10000.0;
-                    sums[idx] += value;
-                    return value;
-                });
-            }
-            foreach (var kv in this.wordProbs)
-            {
-                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
-                {
-                    var value = Math.Log(x / sums[idx]);
-                    if (value >= 0.0)
-                    {
-                        throw new Exception("invalid value range");
-                    }
-                    return value;
-                });
-            }
-            this.shouldRnadomInitialize = false;
-        }
-
-        public void NormalizeWordProbs()
-        {
-            var sums = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(sums, (double x, int idx) => 0.0);
-
-            foreach (var kv in this.wordProbs)
-            {
-                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
-                {
-                    if (x >= 0.0)
-                    {
-                        throw new Exception("invalid value range");
-                    }
-                    var value = Math.Exp(x);
-                    sums[idx] += value;
-                    return value;
-                });
-            }
-            foreach (var kv in this.wordProbs)
-            {
-                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
-                {
-                    var value = Math.Log(x / sums[idx]);
-                    if (value >= 0.0)
-                    {
-                        throw new Exception("invalid value range");
-                    }
-                    return value;
-                });
-            }
+            return (double)random.Next(10, 99999) / (double)100000 * (1.0 / TopicModelHandler.updateWordCount) + (1.0 / TopicModelHandler.updateWordCount);
         }
 
         private double GetRandomNumber()
         {
-            return (double)random.Next(0x10, 0x10000) / (double)0x10000;
+            return (double)random.Next(10, 99999) / (double)100000 + 1.0 / TopicModelHandler.updateWordCount;
         }
 
         private double GetSmallShuffled(double x)
         {
-            return x * (1.0 - 0.01 * (double)random.Next(0x10, 0x10000) / (double)0x10000);
+            return x * (1.0 - 0.001 * (double)random.Next(0x10, 0x10000) / (double)0x10000);
         }
 
-        public void saveProbs()
-        {
-            this.savedTopicsProbs = (double[])this.topicProbs.Clone();
-            this.savedWordProbs = new Dictionary<int, double[]>();
-            foreach (var kv in this.wordProbs)
-            {
-                this.savedWordProbs.Add(kv.Key, (double[])kv.Value.Clone());
-            }
-        }
-
-        public void mergeProbs(double keepRate)
-        {
-            double newRate = 1.0 - keepRate;
-            double sum = 0.0;
-            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) =>
-            {
-                var valeu = Math.Exp(this.savedTopicsProbs[idx]) * keepRate + Math.Exp(x) * newRate;
-                sum += valeu;
-                return valeu;
-            });
-            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => Math.Log(x / sum));
-
-            foreach (var kv in this.wordProbs)
-            {
-                double[] oldData;
-                if (this.savedWordProbs.TryGetValue(kv.Key, out oldData))
-                {
-                    TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) =>
-                    {
-                        return Math.Log(Math.Exp(oldData[idx]) * keepRate + Math.Exp(x) * newRate);
-                    });
-                }
-                else
-                {
-                    // keep new data??
-                }
-            }
-            this.NormalizeWordProbs();
-        }
     }
 
-
-    class TopicModelNext
-    {
-        public double[] topicProbs;    // prob (NOTE: not log)
-        public Dictionary<int, double[]> wordProbs; // prob (NOTE: not log)
-
-        public TopicModelNext()
-        {
-            this.Clear();
-        }
-
-        public double[] GetProbsForWord(int index)
-        {
-            double[] probLine;
-            if (this.wordProbs.TryGetValue(index, out probLine))
-            {
-                return probLine;
-            }
-            probLine = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(probLine, (double x, int idx) => 0.0);
-            this.wordProbs.Add(index, probLine);
-            return probLine;
-        }
-
-        public void Clear()
-        {
-            this.topicProbs = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => 0.0);
-            this.wordProbs = new Dictionary<int, double[]>();
-        }
-
-        public void Normalize()
-        {
-            var topicSum = this.topicProbs.Sum();
-            TopicModelHandler.DoubleForEach(this.topicProbs, (double x, int idx) => (x / topicSum));
-
-            var wordSums = new double[TopicModelHandler.TopicCount];
-            TopicModelHandler.DoubleForEach(wordSums, (double x, int idx) => 0.0);
-            foreach (var kv in this.wordProbs)
-            {
-                TopicModelHandler.DoubleForEach(wordSums, (double x, int idx) => (x + kv.Value[idx]));
-            }
-            foreach (var kv in this.wordProbs)
-            {
-                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => (x / wordSums[idx]));
-            }
-        }
-    }
 
     public class TopicModelHandler
     {
         public const int TopicCount = 63; // 255;
         public const double updateMergeRate = 0.5;
         public const double updateWordCount = 200000;
-        public const int perplexHistMax = 100;
+        public const int perplexHistMax = 50;
         public const int wordCountRequirement = 4;
 
         private TopicModelState baseState;
-        private TopicModelNext nextState;
         private Queue<double> ppHist = new Queue<double>();
         private List<List<int>> documentHistory = new List<List<int>>();
+        private bool isMixUniModel = false;
+        private string logPrefix;
 
-        double currentLikelihood = 0.0;
         double currentWordCount = 0.0;
 
 
-        public TopicModelHandler()
+        public TopicModelHandler(bool isMixUnigram)
         {
+            this.isMixUniModel = isMixUnigram;
             this.baseState = new TopicModelState();
-            this.nextState = new TopicModelNext();
+            this.logPrefix = this.isMixUniModel ? "MixUnigram" : "TopicModel";
         }
 
         public void LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word)
         {
-            this.nextState.Clear();
             this.documentHistory.Clear();
-            this.currentLikelihood = 0.0;
+            this.ppHist.Clear();
             this.currentWordCount = 0.0;
 
             this.baseState.LoadFromFile(fileName, word2id, id2word);
@@ -523,11 +432,6 @@ namespace Ribbon.WebCrawler
                 return; // ignore
             }
 
-            var loggedQDenomi = this.baseState.CalculateQAndApply(listId, this.nextState);
-
-            this.currentLikelihood += loggedQDenomi;
-            TopicModelHandler.IsValidNumber(this.currentLikelihood);
-
             this.documentHistory.Add(listId);
             this.currentWordCount += (double)listId.Count;
 
@@ -539,12 +443,41 @@ namespace Ribbon.WebCrawler
 
         public void PrintCurretState()
         {
-            var curPp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
-            Console.WriteLine($"[TopicModel - pp:{curPp}, word:{this.baseState.GetWordCount()}, words:{this.currentWordCount}, pp-ave:{this.GetPerplexyAvarage()}");
+            var lastPp = this.ppHist.Count == 0 ? 0.0 : this.ppHist.Last();
+            Console.WriteLine($"[{this.logPrefix}] pp:{lastPp}, word:{this.baseState.GetWordCount()}, dos:{this.documentHistory.Count}, words:{this.currentWordCount}, pp-ave:{this.GetPerplexyAvarage()}");
         }
 
         private void LearnLoopUntilPPTarget()
         {
+            var currentModel = this.baseState.DeepCopy();
+            var ppLocalHist = new List<double>();
+
+            var result = this.isMixUniModel ?
+                this.baseState.PrepareMixtureUnigramModel(this.documentHistory) :
+                this.baseState.PrepareTopicModel(this.documentHistory);
+
+            for (int loopCount = 1; ; ++loopCount)
+            {
+                var currentPp = this.isMixUniModel ?
+                        this.baseState.CalculateMixtureUnigramModel(this.documentHistory, TopicModelHandler.updateMergeRate) :
+                        this.baseState.CalculateTopicModel(this.documentHistory, TopicModelHandler.updateMergeRate);
+
+                Console.WriteLine($"[{this.logPrefix}:{loopCount}] pp:{currentPp}, word:{this.baseState.GetWordCount()}, dos:{this.documentHistory.Count}, words:{this.currentWordCount}, pp-ave:{this.GetPerplexyAvarage()}");
+
+                if (ppLocalHist.Count > 0)
+                {
+                    var goNext = ppLocalHist.Skip(Math.Max(ppLocalHist.Count - 5, 0)).All(x => Math.Abs(x - currentPp) < currentPp * 0.08);
+                    if (goNext)
+                    {
+                        this.ppHist.Enqueue(currentPp);
+                        break;
+                    }
+                }
+                ppLocalHist.Add(currentPp);
+            }
+
+            this.baseState.MergeWordList(TopicModelHandler.updateMergeRate, currentModel.wordProbs, this.baseState.wordProbs);
+            this.baseState.wordProbs = currentModel.wordProbs;
 #if false
             if (this.documentHistory.Count > 0)
             {
@@ -569,7 +502,6 @@ namespace Ribbon.WebCrawler
                 this.nextState.Normalize();
                 this.baseState.MergeNext(this.nextState, updateMergeRate);
             }
-#else
             var initialPp = Math.Exp(-this.currentLikelihood / this.currentWordCount);
             this.ppHist.Enqueue(initialPp);
             Console.WriteLine($"[TopicModel - initial] pp:{initialPp}, word:{this.baseState.GetWordCount()} pp-ave:{this.GetPerplexyAvarage()}");
@@ -613,9 +545,7 @@ namespace Ribbon.WebCrawler
 
             this.baseState.mergeProbs(updateMergeRate);
 #endif
-            this.nextState.Clear();
             this.documentHistory.Clear();
-            this.currentLikelihood = 0.0;
             this.currentWordCount = 0.0;
         }
 
@@ -648,11 +578,15 @@ namespace Ribbon.WebCrawler
 
         private double GetPerplexyAvarage()
         {
+            if (this.ppHist.Count == 0)
+            {
+                return 0.0;
+            }
             while (this.ppHist.Count > perplexHistMax)
             {
                 this.ppHist.Dequeue();
             }
-            return this.ppHist.Sum() / (double)(this.ppHist.Count());
+            return this.ppHist.Sum() / (double)(this.ppHist.Count);
         }
 
         public static void DoubleForEach(double [] dst, Func<double, int, double> operation)

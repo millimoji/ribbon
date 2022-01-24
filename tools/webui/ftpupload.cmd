@@ -22,6 +22,8 @@ if exist "%~dp0"summary.html (
 )
 echo del topicmodel-summary.json>> %TEMP%\ftpcommand.txt
 echo put c:\lmworking\topicmodel-summary.json>> %TEMP%\ftpcommand.txt
+echo del mixunigram-summary.json>> %TEMP%\ftpcommand.txt
+echo put c:\lmworking\mixunigram-summary.json>> %TEMP%\ftpcommand.txt
 echo quit>> %TEMP%\ftpcommand.txt
 
 ftp -s:%TEMP%\ftpcommand.txt

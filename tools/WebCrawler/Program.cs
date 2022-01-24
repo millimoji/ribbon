@@ -130,7 +130,7 @@ namespace Ribbon.WebCrawler
                 }
                 else if (this.firstEveryHour == DateTime.Now.Hour)
                 {
-                    this.firstEveryHour = DateTime.Now.Hour + 1;
+                    this.firstEveryHour = (DateTime.Now.Hour + 1) % 24;
                     m_nGraphStore.SaveFile();
                 }
 

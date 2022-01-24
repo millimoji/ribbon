@@ -37,13 +37,17 @@ namespace Ribbon.WebCrawler
         const string n7gramFileName = "n7gram.txt";
         const string topicModelFileName = "topicmodel.txt";
         const string topicModelSummaryFilename = "topicmodel-summary.json";
-        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName, topicModelFileName, topicModelSummaryFilename };
+        const string mixUnigramlFileName = "mixunigram.txt";
+        const string mixUnigramSummaryFilename = "mixunigram-summary.json";
+        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName,
+            topicModelFileName, topicModelSummaryFilename, mixUnigramlFileName, mixUnigramSummaryFilename };
         const string doHalfFileName = "dohalf";
         const string old3prefix = "old3-";
         const string old2prefix = "old2-";
         const string old1prefix = "old-";
 
         TopicModelHandler m_topicModel;
+        TopicModelHandler m_mixUnigram;
 
 
         string m_workDir;
@@ -55,7 +59,8 @@ namespace Ribbon.WebCrawler
         public NGramStore(string workDir)
         {
             m_workDir = workDir;
-            m_topicModel = new TopicModelHandler();
+            m_topicModel = new TopicModelHandler(false /* isMixUnigram */);
+            m_mixUnigram = new TopicModelHandler(true /* isMixUnigram */);
         }
 
         public void SlideDataFile()
@@ -112,6 +117,7 @@ namespace Ribbon.WebCrawler
             }
 
             m_topicModel.SaveToFile(m_workDir + topicModelFileName, m_workDir + topicModelSummaryFilename, (int id) => this.WordList[id]);
+            m_mixUnigram.SaveToFile(m_workDir + mixUnigramlFileName, m_workDir + mixUnigramSummaryFilename, (int id) => this.WordList[id]);
         }
 
         public void LoadFromFile(int divNum = 1)
@@ -183,6 +189,9 @@ namespace Ribbon.WebCrawler
             this.m_topicModel.LoadFromFile(this.m_workDir + topicModelFileName,
                 (string word) => this.WordToWordId(word, false),
                 (int id) => this.WordList[id]);
+            this.m_mixUnigram.LoadFromFile(this.m_workDir + mixUnigramlFileName,
+                (string word) => this.WordToWordId(word, false),
+                (int id) => this.WordList[id]);
         }
 
         public void AddFromWordArray(List<string> arrayOfWord) // sentence
@@ -217,11 +226,13 @@ namespace Ribbon.WebCrawler
             }
 
             m_topicModel.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
+            m_mixUnigram.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
         }
 
         public void PrintCurrentState()
         {
             m_topicModel.PrintCurretState();
+            m_mixUnigram.PrintCurretState();
         }
 
         int WordToWordId(string word, bool createNew = true)

@@ -58,8 +58,8 @@ function DataModel()
 	};
 	me.topicModel = ko.observableArray([]);
 
-	me.reloadJson = () => {
-		var utl = "topicmodel-summary.json";
+	me.reloadJson = (isMixUnigram) => {
+		var utl = isMixUnigram ? "mixunigram-summary.json" : "topicmodel-summary.json";
 		me.downloadJson(utl).then(dataModel => {
 			me.dataModel(dataModel);
 			me.generatedTime(dataModel.generatedTime);
@@ -94,16 +94,16 @@ function DataModel()
 ko.components.register("root-node", {
 	template:
 		'<h1>Summary Page <span data-bind="text: generatedTime"></span></h1>' + 
-		'<button data-bind="click: onReload">Reload</button>' +
+		'<button data-bind="click: onLoadTopicModel">TopicModel</button>' +
+		'<button data-bind="click: onLoadMixUnigram">MixUnigram</button>' +
 		'<topic-model-summary params="dataModel:dataModel"></topic-model-summary>'
 	,
 	viewModel: function (params) {
 		var me = this;
 		me.dataModel = new DataModel();
 		me.generatedTime = me.dataModel.generatedTime;
-		me.onReload = function () { me.dataModel.reloadJson(); };
-
-		me.dataModel.reloadJson();
+		me.onLoadTopicModel = function () { me.dataModel.reloadJson(false); };
+		me.onLoadMixUnigram = function () { me.dataModel.reloadJson(true); };
 	}
 });
 
