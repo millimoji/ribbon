@@ -54,7 +54,7 @@ function DataModel()
 	me.dataModel = ko.observable(null);
 	me.generatedTime = ko.observable("");
 	me.tps = {
-		perplexity: ko.observable(0),
+		perplexity: ko.observable("0"),
 	};
 	me.topicModel = ko.observableArray([]);
 
@@ -63,7 +63,7 @@ function DataModel()
 		me.downloadJson(utl).then(dataModel => {
 			me.dataModel(dataModel);
 			me.generatedTime(dataModel.generatedTime);
-			me.tps.perplexity = dataModel.tps.perplexity;
+			me.tps.perplexity(dataModel.tps.perplexity.toString());
 			me.topicModel(dataModel.topicModel);
 		});
 	};

@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
+//using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -12,6 +13,9 @@ namespace Ribbon.WebCrawler
 {
     class HtmlGetter
     {
+        static private HttpClient m_httpClient;
+        static private object __lockObject = "lockobject";
+
         string m_sourceUrl;
         HtmlDocument m_htmlDoc = new HtmlDocument();
 
@@ -25,6 +29,21 @@ namespace Ribbon.WebCrawler
 
         public HtmlGetter(string url)
         {
+            lock (__lockObject)
+            {
+                if (m_httpClient == null)
+                {
+                    m_httpClient = new HttpClient();
+                    m_httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+                    m_httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
+                    if (!m_httpClient.DefaultRequestHeaders.Contains("Accept-Language"))
+                    {
+                        m_httpClient.DefaultRequestHeaders.Add("Accept-Language", "ja");
+                    }
+                }
+            }
+
             m_sourceUrl = url;
             PageUrls.Add(url);
         }
@@ -57,34 +76,29 @@ namespace Ribbon.WebCrawler
         {
             try
             {
-                using (WebClient client = new WebClient())
+                var getTask = m_httpClient.GetAsync(url);
+                getTask.Wait();
+                using (var httpResponse = getTask.Result)
                 {
-                    client.Headers.Add("user-agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
-                    client.Headers.Add("Accept-Language", "ja");
-
-                    using (Stream data = client.OpenRead(url))
+                    if (httpResponse.StatusCode != System.Net.HttpStatusCode.OK)
                     {
-                        if (client.ResponseHeaders == null)
-                        {
-                            return;
-                        }
-                        var idx = Array.IndexOf(client.ResponseHeaders.AllKeys, "Content-Type");
-                        if (idx < 0)
-                        {
-                            return;
-                        }
-                        var contentType = client.ResponseHeaders.Get(idx);
-                        if (!contentType.StartsWith("text/html"))
-                        {
-                            return;
-                        }
-
-                        using (StreamReader reader = new StreamReader(data))
+                        return;
+                    }
+/*
+                    var contentType = httpResponse.Headers.GetValues("Content-Type");
+                    if (!contentType.Any(x => x.StartsWith("text/html")))
+                    {
+                        return;
+                    }
+*/
+                    using (var streamData = httpResponse.Content.ReadAsStreamAsync().Result)
+                    {
+                        using (StreamReader reader = new StreamReader(streamData))
                         {
                             m_htmlDoc.LoadHtml(reader.ReadToEnd());
                             reader.Close();
                         }
-                        data.Close();
+                        streamData.Close();
                     }
                 }
                 Succeeded = true;
