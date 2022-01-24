@@ -71,8 +71,9 @@ namespace Ribbon.WebCrawler
                     {
                         continue;
                     }
-                    var wordPob = new double[TopicModelHandler.TopicCount];
-                    TopicModelHandler.DoubleForEach(wordPob, (double x, int idx) =>
+                    var wordProb = new double[TopicModelHandler.TopicCount];
+                    this.wordProbs.Add(wordId, wordProb);
+                    TopicModelHandler.DoubleForEach(wordProb, (double x, int idx) =>
                     {
                         return (idx < (wordLine.Length - 1)) ? Convert.ToDouble(wordLine[idx + 1]) : this.GetRandomNumber();
                     });
