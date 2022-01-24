@@ -282,12 +282,16 @@ namespace Ribbon.WebCrawler
         public void MergeWordList(double oldRate, Dictionary<int, double[]> dstWordProbs, Dictionary<int, double[]> newWordProbs)
         {
             var newRate = 1.0 - oldRate;
+            foreach (var kv in dstWordProbs)
+            {
+                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => (x * oldRate));
+            }
             foreach (var kv in newWordProbs)
             {
                 double[] dstWordProb;
                 if (dstWordProbs.TryGetValue(kv.Key, out dstWordProb))
                 {
-                    TopicModelHandler.DoubleForEach(dstWordProb, (double x, int idx) => (x * oldRate + kv.Value[idx] * newRate));
+                    TopicModelHandler.DoubleForEach(dstWordProb, (double x, int idx) => (x + kv.Value[idx] * newRate));
                 }
                 else
                 {
