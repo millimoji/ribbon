@@ -56,9 +56,8 @@ namespace Ribbon.WebCrawler
             }
             using (StreamReader fileStream = new StreamReader(fileName))
             {
-                string line = fileStream.ReadLine();
-
                 this.wordProbs = new Dictionary<int, double[]>(); // clear
+                string line;
                 while ((line = fileStream.ReadLine()) != null)
                 {
                     var wordLine = line.Split('\t');
@@ -403,6 +402,8 @@ namespace Ribbon.WebCrawler
             this.logPrefix = this.isMixUniModel ? "MixUnigram" : "TopicModel";
 
             this.ClearStoredData();
+            this.ppHist.Clear();
+            this.ppHist.Enqueue(0.0);
         }
 
         public void LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word)
@@ -416,8 +417,11 @@ namespace Ribbon.WebCrawler
         {
             this.documentHistory.Clear();
             this.uniqueWord.Clear();
-            this.ppHist.Clear();
-            this.ppHist.Enqueue(0.0);
+        }
+
+        public bool CanSave()
+        {
+            return this.uniqueWord.Count < (TopicModelHandler.updateUniqueWord * 1 / 5);
         }
 
         public void SaveToFile(string fileName, string summaryFilename, Func<int, string> id2Word)
@@ -498,8 +502,8 @@ namespace Ribbon.WebCrawler
             this.baseState.MergeWordList(TopicModelHandler.updateMergeRate, currentModel.wordProbs, this.baseState.wordProbs);
             this.baseState.wordProbs = currentModel.wordProbs;
 
-            this.documentHistory.Clear();
-            this.uniqueWord.Clear();
+            this.ClearStoredData();
+
         }
 
         private List<int> WordArrayToIntArray(List<string> document, Func<string, int> word2id)
@@ -508,16 +512,21 @@ namespace Ribbon.WebCrawler
         }
 
         private static Regex matchNoReading = new Regex(@",\*,\*$");
-        private static Regex excludedPos = new Regex(@"(,名詞,数,|,助詞,|,助動詞,|,接続詞,|,接頭詞,|,記号,|,非自立,|,接尾,|,副詞可能,|,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,)");
+        private static Regex excludedPos = new Regex(@"(,名詞,数,|,名詞,代名詞,一般,|,助詞,|,助動詞,|,接続詞,|,接頭詞,|,記号,|,非自立,|,接尾,|,副詞可能,|,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,)");
         private static Regex excludedWord = new Regex(@"(" +
+                @",動詞,自立,\*,\*,一段,.*,いる,|" +
                 @",動詞,自立,\*,\*,サ変・|" +
                 @",動詞,自立,\*,\*,カ変・|" +
                 @",動詞,自立,\*,\*,五段・ラ行,.*,ある,|" +
                 @",動詞,自立,\*,\*,五段・ラ行,.*,なる,|" +
                 @",動詞,自立,\*,\*,一段,.*,できる,|" +
                 @",動詞,自立,\*,\*,五段・ワ行促音便,.*,行う,|" +
+                @",形容詞,自立,\*,\*,形容詞・アウオ段,.*,ない,|" +
                 @"^この,連体詞,|" +
-                @"^その,連体詞," +
+                @"^その,連体詞,|" +
+                @"^どの,連体詞,|" +
+                @"^さらに,副詞,|" +
+                @"^もちろん,副詞," +
             ")");
 
         public static bool isTargetWord(string word)

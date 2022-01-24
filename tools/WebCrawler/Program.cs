@@ -32,8 +32,9 @@ namespace Ribbon.WebCrawler
         MorphAnalyzer m_morphAnalyzer = new MorphAnalyzer(workingFolder);
         NGramStore m_nGraphStore = new NGramStore(workingFolder);
         DbAcccessor m_dbAcccessor = new DbAcccessor(workingFolder);
-        public int lastSavedHour = DateTime.Now.Hour;
-        public int firstEveryHour = DateTime.Now.Hour + 1;
+        private int lastSavedHour = DateTime.Now.Hour;
+        private int firstEveryHour = DateTime.Now.Hour + 1;
+        private bool saveIfPossible = false;
 
         void Run()
         {
@@ -116,22 +117,51 @@ namespace Ribbon.WebCrawler
                 }
                 m_nGraphStore.PrintCurrentState();
 
+                //
                 if (m_nGraphStore.ShouldFlush())
                 {
                     this.lastSavedHour = DateTime.Now.Hour;
+                    this.saveIfPossible = false;
                     m_nGraphStore.SaveFile();
                     m_nGraphStore.LoadFromFile(2);
                 }
                 else if (((this.lastSavedHour + saveInternvalHour) % 24) == DateTime.Now.Hour)
                 {
-                    this.lastSavedHour = DateTime.Now.Hour;
-                    this.firstEveryHour = -1;
-                    m_nGraphStore.SaveFile();
+                    if (m_nGraphStore.CanSave())
+                    {
+                        this.lastSavedHour = DateTime.Now.Hour;
+                        this.firstEveryHour = -1;
+                        this.saveIfPossible = false;
+                        m_nGraphStore.SaveFile();
+                    }
+                    else
+                    {
+                        this.saveIfPossible = true;
+                    }
                 }
                 else if (this.firstEveryHour == DateTime.Now.Hour)
                 {
-                    this.firstEveryHour = (DateTime.Now.Hour + 1) % 24;
-                    m_nGraphStore.SaveFile();
+                    if (m_nGraphStore.CanSave())
+                    {
+                        this.lastSavedHour = DateTime.Now.Hour;
+                        this.firstEveryHour = (DateTime.Now.Hour + 1) % 24;
+                        this.saveIfPossible = false;
+                        m_nGraphStore.SaveFile();
+                    }
+                    else
+                    {
+                        this.saveIfPossible = true;
+                    }
+                }
+                else if (this.saveIfPossible)
+                {
+                    if (m_nGraphStore.CanSave())
+                    {
+                        this.lastSavedHour = DateTime.Now.Hour;
+                        this.firstEveryHour = (DateTime.Now.Hour + 1) % 24;
+                        this.saveIfPossible = false;
+                        m_nGraphStore.SaveFile();
+                    }
                 }
 
                 Console.WriteLine("End: LoadWebAndAnalyze");

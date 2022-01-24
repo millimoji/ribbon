@@ -90,6 +90,11 @@ namespace Ribbon.WebCrawler
             return this.m_nGrams[6].Count >= thresholdToDiv2;
         }
 
+        public bool CanSave()
+        {
+            return m_topicModel.CanSave(); // m_mixUnigram
+        }
+
         public void SaveFile() // should 
         {
             SlideDataFile();
