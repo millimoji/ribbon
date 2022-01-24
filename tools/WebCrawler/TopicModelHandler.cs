@@ -88,26 +88,43 @@ namespace Ribbon.WebCrawler
         {
             Func<bool> MakeInitialTopic = () =>
             {
-                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => 0.0);
                 bool foundAtLeast = false;
                 foreach (var doc in documents)
                 {
                     foreach (var wordId in doc)
                     {
-                        double[] wordPob;
-                        if (this.wordProbs.TryGetValue(wordId, out wordPob))
+                        double[] wordProb;
+                        if (this.wordProbs.TryGetValue(wordId, out wordProb))
                         {
-                            foundAtLeast = true;
-                            TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => (x + wordPob[idx]));
+                            if (!foundAtLeast)
+                            {
+                                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => Math.Log(wordProb[idx]));
+                                foundAtLeast = true;
+                            }
+                            else
+                            {
+                                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x + Math.Log(wordProb[idx]));
+                            }
                         }
                     }
                 }
+
                 if (foundAtLeast)
                 {
+                    var loggedTpSum = this.topicProb[0];
+                    for (int i = 1; i < this.topicProb.Length; ++i) loggedTpSum = this.AddLogedProb(loggedTpSum, this.topicProb[i]);
+                    TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => Math.Exp(x - loggedTpSum));
                     this.NormalizeDoubleList(this.topicProb);
-                    return true;
+                    // to suppress touch 0
+                    TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x * 0.9 + 0.1);
+                    this.NormalizeDoubleList(this.topicProb);
                 }
-                return false;
+                else
+                {
+                    TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => this.GetRandomNumber());
+                    this.NormalizeDoubleList(this.topicProb);
+                }
+                return true;
             };
 
             if (this.wordProbs.Count == 0 || !MakeInitialTopic())
@@ -188,24 +205,29 @@ namespace Ribbon.WebCrawler
 
                 foreach (var wordId in doc)
                 {
-                    double[] wordPob;
-                    if (this.wordProbs.TryGetValue(wordId, out wordPob))
+                    double[] wordProb;
+                    if (this.wordProbs.TryGetValue(wordId, out wordProb))
                     {
                         foundAtLeast = true;
-                        TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => (x + wordPob[idx]));
+                        var loggedSum = Math.Log(wordProb[0]);
+                        for (int i = 1; i < wordProb.Length; ++i) loggedSum = this.AddLogedProb(loggedSum, Math.Log(wordProb[i]));
+                        TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => (x + Math.Log(wordProb[idx]) - loggedSum));
                     }
                 }
 
-                if (!foundAtLeast)
+                if (foundAtLeast)
                 {
-                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => this.GetRandomNumber());
+                    var loggedTpSum = tmTopicProb[0];
+                    for (int i = 1; i < tmTopicProb.Length; ++i) loggedTpSum = this.AddLogedProb(loggedTpSum, tmTopicProb[i]);
+                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => Math.Exp(x - loggedTpSum));
+                    this.NormalizeDoubleList(tmTopicProb);
+                    // to suppress touch 0
+                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x * 0.9 + 0.1);
                     this.NormalizeDoubleList(tmTopicProb);
                 }
                 else
                 {
-                    this.NormalizeDoubleList(tmTopicProb);
-                    // to suppress touch 0
-                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x * 0.98 + 0.02);
+                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => this.GetRandomNumber());
                     this.NormalizeDoubleList(tmTopicProb);
                 }
             }
