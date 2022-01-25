@@ -33,8 +33,7 @@ namespace Ribbon.WebCrawler
         NGramStore m_nGraphStore = new NGramStore(workingFolder);
         DbAcccessor m_dbAcccessor = new DbAcccessor(workingFolder);
         private int lastSavedHour = DateTime.Now.Hour;
-        private int firstEveryHour = DateTime.Now.Hour + 1;
-        private bool saveIfPossible = false;
+        private bool isEveryHourMode = true;
 
         void Run()
         {
@@ -118,52 +117,26 @@ namespace Ribbon.WebCrawler
                 m_nGraphStore.PrintCurrentState();
 
                 //
-                if (m_nGraphStore.ShouldFlush())
+                if (m_nGraphStore.CanSave())
                 {
-                    this.lastSavedHour = DateTime.Now.Hour;
-                    this.saveIfPossible = false;
-                    m_nGraphStore.SaveFile();
-                    m_nGraphStore.LoadFromFile(2);
-                }
-                else if (((this.lastSavedHour + saveInternvalHour) % 24) == DateTime.Now.Hour)
-                {
-                    if (m_nGraphStore.CanSave())
+                    if (m_nGraphStore.ShouldFlush())
                     {
                         this.lastSavedHour = DateTime.Now.Hour;
-                        this.firstEveryHour = -1;
-                        this.saveIfPossible = false;
+                        m_nGraphStore.SaveFile();
+                        m_nGraphStore.LoadFromFile(2);
+                    }
+                    else if (((this.lastSavedHour + saveInternvalHour) % 24) == DateTime.Now.Hour)
+                    {
+                        this.lastSavedHour = DateTime.Now.Hour;
+                        this.isEveryHourMode = false;
                         m_nGraphStore.SaveFile();
                     }
-                    else
-                    {
-                        this.saveIfPossible = true;
-                    }
-                }
-                else if (this.firstEveryHour == DateTime.Now.Hour)
-                {
-                    if (m_nGraphStore.CanSave())
+                    else if (this.isEveryHourMode && this.lastSavedHour != DateTime.Now.Hour)
                     {
                         this.lastSavedHour = DateTime.Now.Hour;
-                        this.firstEveryHour = (DateTime.Now.Hour + 1) % 24;
-                        this.saveIfPossible = false;
-                        m_nGraphStore.SaveFile();
-                    }
-                    else
-                    {
-                        this.saveIfPossible = true;
-                    }
-                }
-                else if (this.saveIfPossible)
-                {
-                    if (m_nGraphStore.CanSave())
-                    {
-                        this.lastSavedHour = DateTime.Now.Hour;
-                        this.firstEveryHour = (DateTime.Now.Hour + 1) % 24;
-                        this.saveIfPossible = false;
                         m_nGraphStore.SaveFile();
                     }
                 }
-
                 Console.WriteLine("End: LoadWebAndAnalyze");
                 return thisResult;
             });
