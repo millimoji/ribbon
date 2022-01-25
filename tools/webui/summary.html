@@ -55,6 +55,7 @@ function DataModel()
 	me.generatedTime = ko.observable("");
 	me.tps = {
 		perplexity: ko.observable("0"),
+		entropyAverage: ko.observable("0"),
 	};
 	me.topicModel = ko.observableArray([]);
 
@@ -64,6 +65,7 @@ function DataModel()
 			me.dataModel(dataModel);
 			me.generatedTime(dataModel.generatedTime);
 			me.tps.perplexity(dataModel.tps.perplexity.toString());
+			me.tps.entropyAverage(dataModel.tps.entropyAverage.toString());
 			me.topicModel(dataModel.topicModel);
 		});
 	};
@@ -111,7 +113,8 @@ ko.components.register("root-node", {
 ko.components.register("topic-model-summary", {
 	template:
 		'<div class="topic-model-summary">' +
-			'<span class="perplexity" data-bind="text: perplexity"></span>' +
+			'Perplexity: <span data-bind="text: perplexity"></span>, ' +
+			'Entropy Average: <span data-bind="text: entropyAverage"></span>' +
 			'<ul class="topic-list" data-bind="foreach: topicModel">' +
 				'<li><topic-word-list params="wordList:$data, index:$index"></topic-word-list></li>' +
 			'</ul>' +
@@ -121,6 +124,7 @@ ko.components.register("topic-model-summary", {
 		var me = this;
 		me.topicModel = params.dataModel.topicModel;
 		me.perplexity = params.dataModel.tps.perplexity;
+		me.entropyAverage = params.dataModel.tps.entropyAverage;
 	}
 });
 
@@ -139,7 +143,8 @@ ko.components.register("topic-word-list", {
 		me.title = (params.index() == 0) ? "Low Entropy" :
 					(params.index() == 1) ? "Low P * Entropy" :
 					(params.index() == 2) ? "High Entropy" :
-					("Topic " + (params.index() - 2).toString());
+					(params.index() == 3) ? "High P * Entropy" :
+					("Topic " + (params.index() - 3).toString());
 	}
 });
 

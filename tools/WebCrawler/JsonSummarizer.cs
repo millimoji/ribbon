@@ -19,6 +19,7 @@ namespace Ribbon.WebCrawler
         public class TopicModelSummary
         {
             public double perplexity { get; set; }
+            public double entropyAverage { get; set; }
         }
         public class SummaryStruct
         {
@@ -45,7 +46,9 @@ namespace Ribbon.WebCrawler
             var summary = new Ribbon.WebCrawler.JsonType.SummaryStruct();
             summary.generatedTime = DateTime.Now.ToString();
             summary.tps.perplexity = Double.IsInfinity(perplexity) || Double.IsNaN(perplexity) ? 0.0 : perplexity;
-            summary.topicModel = this.MakeTopicModelSummary(wordProbMatrix, id2word);
+            double entropyAverage;
+            summary.topicModel = this.MakeTopicModelSummary(wordProbMatrix, id2word, out entropyAverage);
+            summary.tps.entropyAverage = entropyAverage;
 
             using (var fs = File.Create(fileName))
             {
@@ -60,44 +63,59 @@ namespace Ribbon.WebCrawler
 
         private List<JsonType.WP[]> MakeTopicModelSummary(
             Dictionary<int, double[]> wordProbMatrix,
-            Func<int, string> id2word)
+            Func<int, string> id2word,
+            out double entropyAverage)
         {
             var topicData = new List<JsonType.WP[]>();
 
             var topicCount = wordProbMatrix.First().Value.Length;
             var log2 = Math.Log(2.0);
-            var logTC = - Math.Log(1.0 / (double)topicCount);
+            var logTC = - Math.Log(1.0 / (double)topicCount) / log2;
             var entroyList = wordProbMatrix
                 .Select(x =>
                 {
                     var sum = x.Value.Sum();
-                    var pLogP = x.Value.Select(l =>
+                    var pLogPs = x.Value.Select(l =>
                     {
                         var p = l / sum;
-                        var itempLogP = p * Math.Log(p) / log2;
-                        return itempLogP;
+                        var pLogP = p * Math.Log(p) / log2;
+                        return pLogP;
                     });
-                    var entropy = - pLogP.Sum();
-                    var pEntropy = sum * entropy / logTC;
-                    return new Tuple<string, double, double>(id2word(x.Key), entropy, pEntropy);
+                    var entropy = - pLogPs.Sum() / logTC;
+                    if (entropy > 1.0)
+                    {
+                        throw new Exception("Invalid range");
+                    }
+                    return new Tuple<int, string, double, double>(x.Key, id2word(x.Key), entropy, sum);
                 });
+            var entropyDict = entroyList.ToDictionary(x => x.Item1);
+            entropyAverage = entroyList.Select(x => x.Item3).Sum() / (double)entroyList.Count();
 
             // order by low entropy
             topicData.Add(entroyList
-                .OrderBy(x => x.Item2)
-                .Take(summryItemCount)
+                .Select(x => new Tuple<string, double>(x.Item2, (1.0 - x.Item3)))
+                .OrderByDescending(x => x.Item2)
                 .Select(x => new JsonType.WP { w = x.Item1, p = x.Item2 })
                 .ToArray());
 
             // order by low entropy * propability
             topicData.Add(entroyList
-                .OrderBy(x => x.Item3)
+                .Select(x => new Tuple<string, double>(x.Item2, (1.0 - x.Item3) * x.Item4))
+                .OrderByDescending(x => x.Item2)
                 .Take(summryItemCount)
-                .Select(x => new JsonType.WP { w = x.Item1, p = x.Item3 })
+                .Select(x => new JsonType.WP { w = x.Item1, p = x.Item2 })
                 .ToArray());
 
             // order by high entropy
             topicData.Add(entroyList
+                .OrderByDescending(x => x.Item3)
+                .Take(summryItemCount)
+                .Select(x => new JsonType.WP { w = x.Item2, p = x.Item4 })
+                .ToArray());
+
+            // order by high entropy * probability
+            topicData.Add(entroyList
+                .Select(x => new Tuple<string, double>(x.Item2, x.Item3 * x.Item4))
                 .OrderByDescending(x => x.Item2)
                 .Take(summryItemCount)
                 .Select(x => new JsonType.WP { w = x.Item1, p = x.Item2 })
@@ -106,7 +124,7 @@ namespace Ribbon.WebCrawler
             for (int topic = 0; topic < topicCount; ++topic)
             {
                 var sortByProb = wordProbMatrix
-                    .Select(x => new Tuple<int, double>(x.Key, x.Value[topic]))
+                    .Select(x => new Tuple<int, double>(x.Key, x.Value[topic] * (1.0 - entropyDict[x.Key].Item3)))
                     .OrderByDescending(x => x.Item2)
                     .Take(summryItemCount)
                     .Select(x => new JsonType.WP { w = id2word(x.Item1), p = x.Item2 });

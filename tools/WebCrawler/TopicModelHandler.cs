@@ -412,7 +412,6 @@ namespace Ribbon.WebCrawler
         {
             return x * (1.0 - 0.001 * (double)random.Next(0x10, 0x10000) / (double)0x10000);
         }
-
     }
 
 
