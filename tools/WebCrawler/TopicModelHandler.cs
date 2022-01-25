@@ -18,6 +18,7 @@ namespace Ribbon.WebCrawler
 
         public Dictionary<int, double[]> wordProbs;
         public Dictionary<int, double[]> nextWordProbs;
+        public Dictionary<int, double[]> savedWordProbs;
 
         private System.Random random = new System.Random();
 
@@ -98,12 +99,14 @@ namespace Ribbon.WebCrawler
                         {
                             if (!foundAtLeast)
                             {
-                                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => Math.Log(wordProb[idx]));
+                                var loggedSum = Math.Log(wordProb.Sum());
+                                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x + Math.Log(wordProb[idx]) - loggedSum);
                                 foundAtLeast = true;
                             }
                             else
                             {
-                                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x + Math.Log(wordProb[idx]));
+                                var loggedSum = Math.Log(wordProb.Sum());
+                                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x + Math.Log(wordProb[idx]) - loggedSum);
                             }
                         }
                     }
@@ -116,7 +119,7 @@ namespace Ribbon.WebCrawler
                     TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => Math.Exp(x - loggedTpSum));
                     this.NormalizeDoubleList(this.topicProb);
                     // to suppress touch 0
-                    TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x * 0.9 + 0.1);
+                    TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x + 0.01);
                     this.NormalizeDoubleList(this.topicProb);
                 }
                 else
@@ -182,7 +185,7 @@ namespace Ribbon.WebCrawler
             this.topicProb = nextTopic;
 
             this.NormalizeWordList(this.nextWordProbs);
-            this.MergeWordList(oldRate, this.wordProbs, this.nextWordProbs);
+            this.MergeWordList(oldRate, this.wordProbs, this.savedWordProbs, this.nextWordProbs);
             this.NormalizeWordList(this.wordProbs);
 
             var perplexity = Math.Exp(-likeliHood / wordCount);
@@ -209,9 +212,8 @@ namespace Ribbon.WebCrawler
                     if (this.wordProbs.TryGetValue(wordId, out wordProb))
                     {
                         foundAtLeast = true;
-                        var loggedSum = Math.Log(wordProb[0]);
-                        for (int i = 1; i < wordProb.Length; ++i) loggedSum = this.AddLogedProb(loggedSum, Math.Log(wordProb[i]));
-                        TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => (x + Math.Log(wordProb[idx]) - loggedSum));
+                        var loggedSum = Math.Log(wordProb.Sum());
+                        TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x + Math.Log(wordProb[idx]) - loggedSum);
                     }
                 }
 
@@ -222,7 +224,7 @@ namespace Ribbon.WebCrawler
                     TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => Math.Exp(x - loggedTpSum));
                     this.NormalizeDoubleList(tmTopicProb);
                     // to suppress touch 0
-                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x * 0.9 + 0.1);
+                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x + 0.01);
                     this.NormalizeDoubleList(tmTopicProb);
                 }
                 else
@@ -283,7 +285,7 @@ namespace Ribbon.WebCrawler
 
             // apply to main
             this.NormalizeWordList(this.nextWordProbs);
-            this.MergeWordList(oldRate, this.wordProbs, this.nextWordProbs);
+            this.MergeWordList(oldRate, this.wordProbs, this.savedWordProbs, this.nextWordProbs);
             this.NormalizeWordList(this.wordProbs);
 
             var perplexity = Math.Exp(-likeliHood / wordCount);
@@ -301,23 +303,20 @@ namespace Ribbon.WebCrawler
             return cloned;
         }
 
-        public void MergeWordList(double oldRate, Dictionary<int, double[]> dstWordProbs, Dictionary<int, double[]> newWordProbs)
+        public void MergeWordList(double oldRate, Dictionary<int, double[]> dstWordProbs, Dictionary<int, double[]> oldWordProbs, Dictionary<int, double[]> newWordProbs)
         {
             var newRate = 1.0 - oldRate;
             foreach (var kv in dstWordProbs)
             {
-                TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => (x * oldRate));
-            }
-            foreach (var kv in newWordProbs)
-            {
-                double[] dstWordProb;
-                if (dstWordProbs.TryGetValue(kv.Key, out dstWordProb))
+                var oldProb = oldWordProbs[kv.Key];
+                double[] newProb;
+                if (newWordProbs.TryGetValue(kv.Key, out newProb))
                 {
-                    TopicModelHandler.DoubleForEach(dstWordProb, (double x, int idx) => (x + kv.Value[idx] * newRate));
+                    TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => oldProb[idx] + newProb[idx] * newRate);
                 }
                 else
                 {
-                    dstWordProbs.Add(kv.Key, (double[])kv.Value.Clone());
+                    TopicModelHandler.DoubleForEach(kv.Value, (double x, int idx) => oldProb[idx]);
                 }
             }
             this.NormalizeWordList(this.wordProbs);
@@ -340,6 +339,7 @@ namespace Ribbon.WebCrawler
                         ((double)this.random.Next(1, 999999) / 1000000.0 * randomRange + 1.0 / TopicModelHandler.estimatedFilledWordCount));
                     this.wordProbs.Add(wordId, wordProb);
                 }
+
                 // zero clear for next word
                 if (!this.nextWordProbs.TryGetValue(wordId, out wordProb))
                 {
@@ -348,6 +348,12 @@ namespace Ribbon.WebCrawler
                 }
             }
             this.NormalizeWordList(this.wordProbs);
+
+            this.savedWordProbs = new Dictionary<int, double[]>(); // reset
+            foreach (var kv in this.wordProbs)
+            {
+                this.savedWordProbs.Add(kv.Key, (double[])kv.Value.Clone());
+            }
         }
 
         public int GetWordCount()
@@ -357,6 +363,10 @@ namespace Ribbon.WebCrawler
 
         private double AddLogedProb(double logA, double logB)
         {
+            if (logA == 0.0)
+            {
+                return logB;
+            }
             // log(exp(a) + exp(b)) = log(exp(a)(1 + exp(b)/exp(a)) = a + log(1 + exp(b - a))
             if (logA < logB)
             { // swap
@@ -409,7 +419,7 @@ namespace Ribbon.WebCrawler
     {
         public const int TopicCount = 63; // 255;
         public const double updateMergeRate = 0.5;
-        public const double updateUniqueWord = 20000;
+        public const double updateUniqueWord = 1000; // 20000;
         public const int perplexHistMax = 50;
         public const int wordCountRequirement = 4;
         public const double estimatedFilledWordCount = 10.0 * updateUniqueWord;
@@ -490,7 +500,6 @@ namespace Ribbon.WebCrawler
 
         private void LearnLoopUntilPPTarget()
         {
-            var currentModel = this.baseState.DeepCopy();
             var ppLocalHist = new List<double>();
 
             var result = this.isMixUniModel ?
@@ -524,9 +533,6 @@ namespace Ribbon.WebCrawler
                 }
                 ppLocalHist.Add(currentPp);
             }
-
-            this.baseState.MergeWordList(TopicModelHandler.updateMergeRate, currentModel.wordProbs, this.baseState.wordProbs);
-            this.baseState.wordProbs = currentModel.wordProbs;
 
             this.ClearStoredData();
 
