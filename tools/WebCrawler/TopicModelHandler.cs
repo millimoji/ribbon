@@ -10,12 +10,13 @@ namespace Ribbon.WebCrawler
 {
     class TopicModelState
     {
-        // for mixture model;
+        // for mixture model, topic model uses this also
         private double[] topicProb = new double[TopicModelHandler.TopicCount];
 
         // for topic model
         private double[][] topicProbs;
 
+        private double[] averageTopicProbs = new double[TopicModelHandler.TopicCount];
         public Dictionary<int, double[]> wordProbs;
         public Dictionary<int, double[]> nextWordProbs;
         
@@ -24,12 +25,20 @@ namespace Ribbon.WebCrawler
         public TopicModelState()
         {
             this.wordProbs = new Dictionary<int, double[]>();
+
+            TopicModelHandler.DoubleForEach(this.averageTopicProbs, (double x, int idx) => this.GetRandomNumber());
+            this.NormalizeDoubleList(this.averageTopicProbs);
         }
 
         public void SaveToFile(string fileName, Func<int, string> id2word)
         {
             using (StreamWriter fileStream = new StreamWriter(fileName, false, Encoding.Unicode))
             {
+                {
+                    var outputLine = "[Topic]\t" + String.Join("\t", this.averageTopicProbs);
+                    fileStream.WriteLine(outputLine);
+                }
+
                 foreach (var item in this.wordProbs)
                 {
                     var wordText = id2word(item.Key);
@@ -56,8 +65,20 @@ namespace Ribbon.WebCrawler
             }
             using (StreamReader fileStream = new StreamReader(fileName))
             {
+                string line = fileStream.ReadLine();
+                string[] headerLine = line.Split('\t');
+                if (headerLine[0] != "[Topic]")
+                {
+                    return false;
+                }
+
+                TopicModelHandler.DoubleForEach(this.averageTopicProbs, (double x, int idx) =>
+                {
+                    return (idx < (headerLine.Length - 1)) ? Convert.ToDouble(headerLine[idx + 1]) : this.GetRandomNumber();
+                });
+                this.NormalizeDoubleList(this.averageTopicProbs);
+
                 this.wordProbs = new Dictionary<int, double[]>(); // clear
-                string line;
                 while ((line = fileStream.ReadLine()) != null)
                 {
                     var wordLine = line.Split('\t');
@@ -88,6 +109,8 @@ namespace Ribbon.WebCrawler
         {
             Func<bool> MakeInitialTopic = () =>
             {
+                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => Math.Log(this.averageTopicProbs[idx]));
+
                 bool foundAtLeast = false;
                 foreach (var doc in documents)
                 {
@@ -97,15 +120,8 @@ namespace Ribbon.WebCrawler
                         if (this.wordProbs.TryGetValue(wordId, out wordProb))
                         {
                             var loggedSum = Math.Log(wordProb.Sum());
-                            if (!foundAtLeast)
-                            {
-                                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => Math.Log(wordProb[idx]) - loggedSum);
-                                foundAtLeast = true;
-                            }
-                            else
-                            {
-                                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x + Math.Log(wordProb[idx]) - loggedSum);
-                            }
+                            TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x + Math.Log(wordProb[idx]) - loggedSum);
+                            foundAtLeast = true;
                         }
                     }
                 }
@@ -181,6 +197,7 @@ namespace Ribbon.WebCrawler
 
             // apply to main
             this.topicProb = nextTopic;
+            this.NormalizeDoubleList(this.topicProb);
 
             this.NormalizeWordList(this.nextWordProbs);
             this.MergeWordList(oldRate, this.wordProbs, this.nextWordProbs);
@@ -189,19 +206,29 @@ namespace Ribbon.WebCrawler
             var perplexity = Math.Exp(-likeliHood / wordCount);
             return perplexity;
         }
+
+        public bool FinalizeMixUnigram(double keepRate)
+        {
+            var newRate = 1.0 - keepRate;
+            TopicModelHandler.DoubleForEach(this.averageTopicProbs, (double x, int idx) => x * keepRate + this.topicProb[idx] * newRate);
+            this.NormalizeDoubleList(this.averageTopicProbs);
+            return true;
+        }
+
         #endregion
 
         #region TopicModel
         public bool PrepareTopicModel(List<List<int>> documents)
         {
+            TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => 0.0);
             this.topicProbs = new double[documents.Count][];
             for (var docIdx = 0; docIdx < documents.Count; ++docIdx)
             {
-                var tmTopicProb = new double[TopicModelHandler.TopicCount];
-                this.topicProbs[docIdx] = tmTopicProb;
-
                 var doc = documents[docIdx];
                 bool foundAtLeast = false;
+
+                var tmTopicProb = this.topicProbs[docIdx] = (double[])this.averageTopicProbs.Clone();
+                TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => Math.Log(x));
 
                 foreach (var wordId in doc)
                 {
@@ -209,15 +236,8 @@ namespace Ribbon.WebCrawler
                     if (this.wordProbs.TryGetValue(wordId, out wordProb))
                     {
                         var loggedSum = Math.Log(wordProb.Sum());
-                        if (!foundAtLeast)
-                        {
-                            foundAtLeast = true;
-                            TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => Math.Log(wordProb[idx]) - loggedSum);
-                        }
-                        else
-                        {
-                            TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x + Math.Log(wordProb[idx]) - loggedSum);
-                        }
+                        TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x + Math.Log(wordProb[idx]) - loggedSum);
+                        foundAtLeast = true;
                     }
                 }
 
@@ -294,6 +314,22 @@ namespace Ribbon.WebCrawler
 
             var perplexity = Math.Exp(-likeliHood / wordCount);
             return perplexity;
+        }
+
+        public bool FinalizeTopicModel(double keepRate)
+        {
+            TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => 0.0);
+            foreach (var prob in this.topicProbs)
+            {
+                TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => x + prob[idx]);
+            }
+            this.NormalizeDoubleList(this.topicProb);
+
+            var revDocCount = 1.0 / (double)this.topicProbs.Length;
+            var newRate = 1.0 - keepRate;
+            TopicModelHandler.DoubleForEach(this.averageTopicProbs, (double x, int idx) => x * keepRate + this.topicProb[idx] * newRate);
+            this.NormalizeDoubleList(this.averageTopicProbs);
+            return true;
         }
         #endregion
 
@@ -537,6 +573,10 @@ namespace Ribbon.WebCrawler
 
             this.baseState.MergeWordList(TopicModelHandler.updateMergeRate, currentModel.wordProbs, this.baseState.wordProbs);
             this.baseState.wordProbs = currentModel.wordProbs;
+
+            result = this.isMixUniModel ?
+                this.baseState.FinalizeMixUnigram(TopicModelHandler.updateMergeRate) :
+                this.baseState.FinalizeTopicModel(TopicModelHandler.updateMergeRate);
 
             this.ClearStoredData();
 
