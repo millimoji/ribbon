@@ -453,7 +453,7 @@ namespace Ribbon.WebCrawler
 
     public class TopicModelHandler
     {
-        public const int TopicCount = 255;
+        public const int TopicCount = 127;
         public const double updateMergeRate = 0.5;
         public const double updateUniqueWord = 20000;
         public const int perplexHistMax = 50;
