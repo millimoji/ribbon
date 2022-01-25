@@ -95,6 +95,7 @@ namespace Ribbon.WebCrawler
             topicData.Add(entroyList
                 .Select(x => new Tuple<string, double>(x.Item2, (1.0 - x.Item3)))
                 .OrderByDescending(x => x.Item2)
+                .Take(summryItemCount)
                 .Select(x => new JsonType.WP { w = x.Item1, p = x.Item2 })
                 .ToArray());
 
