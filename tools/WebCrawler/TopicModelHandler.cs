@@ -590,7 +590,6 @@ namespace Ribbon.WebCrawler
         private static Regex matchNoReading = new Regex(@",\*,\*$");
         private static Regex excludedPos = new Regex(@"(,名詞,数,|,名詞,代名詞,一般,|,助詞,|,助動詞,|,接続詞,|,接頭詞,|,記号,|,非自立,|,接尾,|,副詞可能,|,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,)");
         private static Regex excludedWord = new Regex(@"(" +
-                @"^情報,名詞,一般,\*\,\*\,\*,\*,|" + // to many ...
                 @",動詞,自立,\*,\*,一段,.*,いる,|" +
                 @",動詞,自立,\*,\*,サ変・.*,.*,する,|" +
                 @",動詞,自立,\*,\*,カ変・.*,.*,くる,|" +
