@@ -55,6 +55,8 @@ function DataModel()
 	me.generatedTime = ko.observable("");
 	me.tps = {
 		perplexity: ko.observable("0"),
+		latestPerplexity: ko.observable("0"),
+		topicEntropy: ko.observable("0"),
 		entropyAverage: ko.observable("0"),
 	};
 	me.topicModel = ko.observableArray([]);
@@ -65,6 +67,8 @@ function DataModel()
 			me.dataModel(dataModel);
 			me.generatedTime(dataModel.generatedTime);
 			me.tps.perplexity(dataModel.tps.perplexity.toString());
+			me.tps.latestPerplexity(dataModel.tps.latestPerplexity.toString());
+			me.tps.topicEntropy(dataModel.tps.topicEntropy.toString());
 			me.tps.entropyAverage(dataModel.tps.entropyAverage.toString());
 			me.topicModel(dataModel.topicModel);
 		});
@@ -113,7 +117,9 @@ ko.components.register("root-node", {
 ko.components.register("topic-model-summary", {
 	template:
 		'<div class="topic-model-summary">' +
+			'Latest Perplexity: <span data-bind="text: latestPerplexity"></span>, ' +
 			'Perplexity: <span data-bind="text: perplexity"></span>, ' +
+			'Topic Entropy: <span data-bind="text: topicEntropy"></span>, ' +
 			'Entropy Average: <span data-bind="text: entropyAverage"></span>' +
 			'<ul class="topic-list" data-bind="foreach: topicModel">' +
 				'<li><topic-word-list params="wordList:$data, index:$index"></topic-word-list></li>' +
@@ -124,6 +130,8 @@ ko.components.register("topic-model-summary", {
 		var me = this;
 		me.topicModel = params.dataModel.topicModel;
 		me.perplexity = params.dataModel.tps.perplexity;
+		me.latestPerplexity = params.dataModel.tps.latestPerplexity;
+		me.topicEntropy = params.dataModel.tps.topicEntropy;
 		me.entropyAverage = params.dataModel.tps.entropyAverage;
 	}
 });

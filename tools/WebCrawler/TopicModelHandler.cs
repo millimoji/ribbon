@@ -16,7 +16,7 @@ namespace Ribbon.WebCrawler
         // for topic model
         private double[][] topicProbs;
 
-        private double[] averageTopicProbs = new double[TopicModelHandler.TopicCount];
+        public double[] averageTopicProbs = new double[TopicModelHandler.TopicCount];
         public Dictionary<int, double[]> wordProbs;
         public Dictionary<int, double[]> nextWordProbs;
         
@@ -506,7 +506,7 @@ namespace Ribbon.WebCrawler
 
             {
                 var summarizer = new JsonSummarizer();
-                summarizer.Serialize(summaryFilename, this.ppHist.Average(), this.baseState.wordProbs, id2Word);
+                summarizer.Serialize(summaryFilename, this.ppHist.Average(), this.ppHist.Last(), this.baseState.averageTopicProbs, this.baseState.wordProbs, id2Word);
             }
         }
 

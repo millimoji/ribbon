@@ -19,7 +19,9 @@ namespace Ribbon.WebCrawler
         public class TopicModelSummary
         {
             public double perplexity { get; set; }
+            public double latestPerplexity { get; set; }
             public double entropyAverage { get; set; }
+            public double topicEntropy { get; set; }
         }
         public class SummaryStruct
         {
@@ -35,7 +37,9 @@ namespace Ribbon.WebCrawler
 
         public void Serialize(
             string fileName,
-            double perplexity,
+            double averagePerplexity,
+            double latestPerplexity,
+            double [] topicProbs,
             Dictionary<int, double[]> wordProbMatrix,
             Func<int, string> id2word)
         {
@@ -45,9 +49,14 @@ namespace Ribbon.WebCrawler
             }
             var summary = new Ribbon.WebCrawler.JsonType.SummaryStruct();
             summary.generatedTime = DateTime.Now.ToString();
-            summary.tps.perplexity = Double.IsInfinity(perplexity) || Double.IsNaN(perplexity) ? 0.0 : perplexity;
+            summary.tps.perplexity = Double.IsInfinity(averagePerplexity) || Double.IsNaN(averagePerplexity) ? 0.0 : averagePerplexity;
+            summary.tps.latestPerplexity = Double.IsInfinity(latestPerplexity) || Double.IsNaN(latestPerplexity) ? 0.0 : latestPerplexity;
+
+            var log2 = Math.Log(2.0);
+            summary.tps.topicEntropy = topicProbs.Select(x => (x * Math.Log(x) / log2)).Sum();
+
             double entropyAverage;
-            summary.topicModel = this.MakeTopicModelSummary(wordProbMatrix, id2word, out entropyAverage);
+            summary.topicModel = this.MakeTopicModelSummary(topicProbs, wordProbMatrix, id2word, out entropyAverage);
             summary.tps.entropyAverage = entropyAverage;
 
             using (var fs = File.Create(fileName))
@@ -62,6 +71,7 @@ namespace Ribbon.WebCrawler
         }
 
         private List<JsonType.WP[]> MakeTopicModelSummary(
+            double[] topicProbs,
             Dictionary<int, double[]> wordProbMatrix,
             Func<int, string> id2word,
             out double entropyAverage)
@@ -69,13 +79,15 @@ namespace Ribbon.WebCrawler
             var topicData = new List<JsonType.WP[]>();
 
             var topicCount = wordProbMatrix.First().Value.Length;
+            var normalizeWork = new double [topicCount];
             var log2 = Math.Log(2.0);
             var logTC = - Math.Log(1.0 / (double)topicCount) / log2;
             var entroyList = wordProbMatrix
-                .Select(x =>
+                .Select(kv =>
                 {
-                    var sum = x.Value.Sum();
-                    var pLogPs = x.Value.Select(l =>
+                    TopicModelHandler.DoubleForEach(normalizeWork, (double x, int idx) => (topicProbs[idx] * kv.Value[idx]));
+                    var sum = normalizeWork.Sum();
+                    var pLogPs = normalizeWork.Select(l =>
                     {
                         var p = l / sum;
                         var pLogP = p * Math.Log(p) / log2;
@@ -86,7 +98,7 @@ namespace Ribbon.WebCrawler
                     {
                         throw new Exception("Invalid range");
                     }
-                    return new Tuple<int, string, double, double>(x.Key, id2word(x.Key), entropy, sum);
+                    return new Tuple<int, string, double, double>(kv.Key, id2word(kv.Key), entropy, sum);
                 });
             var entropyDict = entroyList.ToDictionary(x => x.Item1);
             entropyAverage = entroyList.Select(x => x.Item3).Sum() / (double)entroyList.Count();
