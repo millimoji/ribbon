@@ -220,32 +220,32 @@ namespace Ribbon.WebCrawler
         #region TopicModel
         public bool PrepareTopicModel(List<List<int>> documents)
         {
-            TopicModelHandler.DoubleForEach(this.topicProb, (double x, int idx) => 0.0);
+            var qWork = new double[TopicModelHandler.TopicCount];
             this.topicProbs = new double[documents.Count][];
             for (var docIdx = 0; docIdx < documents.Count; ++docIdx)
             {
                 var doc = documents[docIdx];
                 bool foundAtLeast = false;
 
-                var tmTopicProb = this.topicProbs[docIdx] = (double[])this.averageTopicProbs.Clone();
-                TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => Math.Log(x));
+                var tmTopicProb = this.topicProbs[docIdx] = new double[TopicModelHandler.TopicCount];
+                TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => 0.0);
 
                 foreach (var wordId in doc)
                 {
                     double[] wordProb;
                     if (this.wordProbs.TryGetValue(wordId, out wordProb))
                     {
-                        var loggedSum = Math.Log(wordProb.Sum());
-                        TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x + Math.Log(wordProb[idx]) - loggedSum);
+                        TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => this.averageTopicProbs[idx] * wordProb[idx]);
+                        var sum = qWork.Sum();
+                        TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => x / sum);
                         foundAtLeast = true;
+
+                        TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x + qWork[idx]);
                     }
                 }
 
                 if (foundAtLeast)
                 {
-                    var loggedTpSum = tmTopicProb[0];
-                    for (int i = 1; i < tmTopicProb.Length; ++i) loggedTpSum = this.AddLogedProb(loggedTpSum, tmTopicProb[i]);
-                    TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => Math.Exp(x - loggedTpSum));
                     this.NormalizeDoubleList(tmTopicProb);
                     //// to suppress touch 0
                     //TopicModelHandler.DoubleForEach(tmTopicProb, (double x, int idx) => x + 0.01);
@@ -273,38 +273,42 @@ namespace Ribbon.WebCrawler
             }
 
             var qWork = new double[TopicModelHandler.TopicCount];
+            var nextTopicProbs = new double[TopicModelHandler.TopicCount];
 
             for (int docIdx = 0; docIdx < documents.Count; ++docIdx)
             {
                 var doc = documents[docIdx];
                 var currentTopic = this.topicProbs[docIdx];
+                var nextWordProb = this.nextWordProbs[docIdx];
 
                 // 
                 TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => 0.0);
+                TopicModelHandler.DoubleForEach(nextTopicProbs, (double x, int idx) => 0.0);
+
                 foreach (var wordId in doc)
                 {
                     var wordPob = this.wordProbs[wordId];
-                    TopicModelHandler.DoubleForEach(qWork, (double x, int idx) =>
-                        (x + Math.Log(Math.Max(currentTopic[idx], 1.0 / Single.MaxValue)) + Math.Log(Math.Max(wordPob[idx], 1.0 / Single.MaxValue))));
-                }
-                var loggedSum = qWork[0];
-                for (int i = 0; i < TopicModelHandler.TopicCount; ++i)
-                {
-                    loggedSum = this.AddLogedProb(loggedSum, qWork[i]);
-                }
-                TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => Math.Exp(x - loggedSum));
-                likeliHood += loggedSum;
-                wordCount += doc.Count;
+                    TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => currentTopic[idx] * wordPob[idx]);
+                    var qSum = qWork.Sum();
+                    TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => x / qSum);
 
-                // apply to next
-                TopicModelHandler.DoubleForEach(currentTopic, (double x, int idx) => qWork[idx]);
+                    // update other words
+                    TopicModelHandler.DoubleForEach(nextTopicProbs, (double x, int idx) => x + qWork[idx]);
+                    foreach (var coOccuredWordId in doc)
+                    {
+                        var nextCoOccurdWordProbs = this.nextWordProbs[wordId];
+                        TopicModelHandler.DoubleForEach(nextCoOccurdWordProbs, (double x, int idx) => x + qWork[idx]);
+                    }
+                }
+
+                // apply to next topic, because this topic prob is not used at rest of logic. and calcurate likelihood
+                TopicModelHandler.DoubleForEach(currentTopic, (double x, int idx) =>
+                {
+                    var p = nextTopicProbs[idx];
+                    likeliHood = this.AddLogedProb(likeliHood, Math.Log(p));
+                    return p;
+                });
                 this.NormalizeDoubleList(currentTopic);
-
-                foreach (var wordId in doc)
-                {
-                    var nextWordProb = this.nextWordProbs[wordId];
-                    TopicModelHandler.DoubleForEach(nextWordProb, (double x, int idx) => x + qWork[idx]);
-                }
             }
 
             // apply to main
