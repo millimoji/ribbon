@@ -279,7 +279,7 @@ namespace Ribbon.WebCrawler
             {
                 var doc = documents[docIdx];
                 var currentTopic = this.topicProbs[docIdx];
-                var nextWordProb = this.nextWordProbs[docIdx];
+                wordCount += doc.Count;
 
                 // 
                 TopicModelHandler.DoubleForEach(qWork, (double x, int idx) => 0.0);
@@ -296,18 +296,14 @@ namespace Ribbon.WebCrawler
                     TopicModelHandler.DoubleForEach(nextTopicProbs, (double x, int idx) => x + qWork[idx]);
                     foreach (var coOccuredWordId in doc)
                     {
-                        var nextCoOccurdWordProbs = this.nextWordProbs[wordId];
+                        var nextCoOccurdWordProbs = this.nextWordProbs[coOccuredWordId];
                         TopicModelHandler.DoubleForEach(nextCoOccurdWordProbs, (double x, int idx) => x + qWork[idx]);
                     }
+                    likeliHood += Math.Log(qSum);
                 }
 
                 // apply to next topic, because this topic prob is not used at rest of logic. and calcurate likelihood
-                TopicModelHandler.DoubleForEach(currentTopic, (double x, int idx) =>
-                {
-                    var p = nextTopicProbs[idx];
-                    likeliHood = this.AddLogedProb(likeliHood, Math.Log(p));
-                    return p;
-                });
+                TopicModelHandler.DoubleForEach(currentTopic, (double x, int idx) => nextTopicProbs[idx]);
                 this.NormalizeDoubleList(currentTopic);
             }
 
@@ -457,9 +453,9 @@ namespace Ribbon.WebCrawler
 
     public class TopicModelHandler
     {
-        public const int TopicCount = 127;
+        public const int TopicCount = 63;
         public const double updateMergeRate = 0.5;
-        public const double updateUniqueWord = 20000;
+        public const double updateUniqueWord = 30000;
         public const int perplexHistMax = 50;
         public const int wordCountRequirement = 4;
         public const double estimatedFilledWordCount = 10.0 * updateUniqueWord;
