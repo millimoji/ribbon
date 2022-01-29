@@ -1,4 +1,4 @@
-set TARGETDBDIR=e:\lmdata
+set TARGETDBDIR=c:\lmworking
 
 mkdir %TARGETDBDIR%
 copy EmptyDB.mdf     %TARGETDBDIR%\WebUrlDB.mdf

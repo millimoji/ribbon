@@ -10,7 +10,8 @@ namespace Ribbon.WebCrawler
     {
         // constants
         public const string mecabExe = "c:\\Program Files (x86)\\MeCab\\bin\\mecab.exe";
-        public const string workingFolder = "e:\\lmdata\\";
+        public const string workingFolder = "c:\\lmworking\\";
+        public const string ftpUploader = "..\\..\\..\\webui\\ftpupload.cmd";
 
         static void Main(string[] args)
         {
@@ -25,12 +26,14 @@ namespace Ribbon.WebCrawler
             public HashSet<string> referenceUrls = new HashSet<string>();
         }
 
+        const int saveInternvalHour = 6;
         const int parallelDownload = 20;
 
         MorphAnalyzer m_morphAnalyzer = new MorphAnalyzer(workingFolder);
         NGramStore m_nGraphStore = new NGramStore(workingFolder);
         DbAcccessor m_dbAcccessor = new DbAcccessor(workingFolder);
-        public int lastSavedHour = -1;
+        private int lastSavedHour = DateTime.Now.Hour;
+        private bool isEveryHourMode = true;
 
         void Run()
         {
@@ -111,13 +114,30 @@ namespace Ribbon.WebCrawler
                 {
                     m_nGraphStore.AddFromWordArray(morphList);
                 }
+                m_nGraphStore.PrintCurrentState();
 
-                if (lastSavedHour != DateTime.Now.Hour)
+                //
+                if (m_nGraphStore.CanSave())
                 {
-                    m_nGraphStore.SaveFile();
-                    lastSavedHour = DateTime.Now.Hour;
+                    if (m_nGraphStore.ShouldFlush())
+                    {
+                        this.lastSavedHour = DateTime.Now.Hour;
+                        m_nGraphStore.SaveFile();
+                        m_nGraphStore.LoadFromFile(2);
+                    }
+                    else if (((this.lastSavedHour + saveInternvalHour) % 24) == DateTime.Now.Hour)
+                    {
+                        this.lastSavedHour = DateTime.Now.Hour;
+                        this.isEveryHourMode = false;
+                        m_nGraphStore.SaveFile();
+                    }
+                    else if (this.isEveryHourMode && this.lastSavedHour != DateTime.Now.Hour)
+                    {
+                        this.lastSavedHour = DateTime.Now.Hour;
+                        m_nGraphStore.SaveFile();
+                    }
                 }
-
+                Console.WriteLine("End: LoadWebAndAnalyze");
                 return thisResult;
             });
         }

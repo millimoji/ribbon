@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<!-- "c:\Program Files\Google\Chrome\Application\chrome.exe" --allow-file-access-from-files file:///D:/Git/ribbon/tools/webui/summary.html -->
+<!-- TODO: move to better way to build as SPA -->
+<style>
+ul {
+	list-style-type: none;
+	padding-inline-start: 0;
+}
+li {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  margin: 0;
+}
+
+.topic-list {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+}
+
+.topic-list li {
+}
+
+ul.topic-word-list {
+	display: flex;
+	flex-direction: column;
+	flex-wrap: nowrap;
+	border-right: 1px solid black;
+}
+ul.topic-word-list li.topic-title {
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 800;
+}
+
+word-prob {
+	display: inline-block;
+	margin-left: 1ch;
+	min-width: 20ch;
+	font-size: 12px;
+}
+
+</style>
+<script type='text/javascript' src='https://ajax.aspnetcdn.com/ajax/knockout/knockout-3.5.0.js'></script>
+<script>
+(() => {
+
+function DataModel()
+{
+	var me = this;
+	me.dataModel = ko.observable(null);
+	me.generatedTime = ko.observable("");
+	me.tps = {
+		perplexity: ko.observable("0"),
+		latestPerplexity: ko.observable("0"),
+		topicEntropy: ko.observable("0"),
+		entropyAverage: ko.observable("0"),
+	};
+	me.topicModel = ko.observableArray([]);
+
+	me.reloadJson = (isMixUnigram) => {
+		var utl = isMixUnigram ? "mixunigram-summary.json" : "topicmodel-summary.json";
+		me.downloadJson(utl).then(dataModel => {
+			me.dataModel(dataModel);
+			me.generatedTime(dataModel.generatedTime);
+			me.tps.perplexity(dataModel.tps.perplexity.toString());
+			me.tps.latestPerplexity(dataModel.tps.latestPerplexity.toString());
+			me.tps.topicEntropy(dataModel.tps.topicEntropy.toString());
+			me.tps.entropyAverage(dataModel.tps.entropyAverage.toString());
+			me.topicModel(dataModel.topicModel);
+		});
+	};
+
+	me.downloadJson = function (url) {
+		return new Promise((resolve, reject) => {
+			var xmlHttp = new XMLHttpRequest();
+			xmlHttp.onload = function() {
+				var jsonResult = JSON.parse(xmlHttp.responseText);
+				if (typeof jsonResult.error !== "undefined") {
+					var errorCode = (typeof jsonResult.code !== "undefined") ? (jsonResult.code.toString() + ": ") : "";
+					var errorText = errorCode + jsonResult.error;
+					reject(errorText);
+				} else {
+					resolve(JSON.parse(xmlHttp.responseText));
+				}
+			}
+			xmlHttp.onerror = function() {
+				reject(xmlHttp.statusText);
+			}
+			xmlHttp.open("GET", url, true);
+			// xmlHttp.responseType = "arraybuffer";
+			xmlHttp.send();
+		});
+	};
+}
+
+ko.components.register("root-node", {
+	template:
+		'<h1>Summary Page <span data-bind="text: generatedTime"></span></h1>' + 
+		'<button data-bind="click: onLoadTopicModel">TopicModel</button>' +
+		'<button data-bind="click: onLoadMixUnigram">MixUnigram</button>' +
+		'<topic-model-summary params="dataModel:dataModel"></topic-model-summary>'
+	,
+	viewModel: function (params) {
+		var me = this;
+		me.dataModel = new DataModel();
+		me.generatedTime = me.dataModel.generatedTime;
+		me.onLoadTopicModel = function () { me.dataModel.reloadJson(false); };
+		me.onLoadMixUnigram = function () { me.dataModel.reloadJson(true); };
+		me.dataModel.reloadJson(false);
+	}
+});
+
+ko.components.register("topic-model-summary", {
+	template:
+		'<div class="topic-model-summary">' +
+			'Latest Perplexity: <span data-bind="text: latestPerplexity"></span>, ' +
+			'Perplexity: <span data-bind="text: perplexity"></span>, ' +
+			'Topic Entropy: <span data-bind="text: topicEntropy"></span>, ' +
+			'Entropy Average: <span data-bind="text: entropyAverage"></span>' +
+			'<ul class="topic-list" data-bind="foreach: topicModel">' +
+				'<li><topic-word-list params="wordList:$data, index:$index"></topic-word-list></li>' +
+			'</ul>' +
+		'</div>'
+	,
+	viewModel: function (params) {
+		var me = this;
+		me.topicModel = params.dataModel.topicModel;
+		me.perplexity = params.dataModel.tps.perplexity;
+		me.latestPerplexity = params.dataModel.tps.latestPerplexity;
+		me.topicEntropy = params.dataModel.tps.topicEntropy;
+		me.entropyAverage = params.dataModel.tps.entropyAverage;
+	}
+});
+
+ko.components.register("topic-word-list", {
+	template:
+		'<ul class="topic-word-list">' +
+			'<li class="topic-title"><span data-bind="text: title"></span></li>' +
+			'<!-- ko foreach: wordList -->' +
+				'<li><word-prob params="wp:$data"></word-prob></li>' +
+			'<!-- /ko -->' +
+		'</ul>'
+	,
+	viewModel: function (params) {
+		var me = this;
+		me.wordList = params.wordList;
+		me.title = (params.index() == 0) ? "Low Entropy" :
+					(params.index() == 1) ? "Low P * Entropy" :
+					(params.index() == 2) ? "High Entropy" :
+					(params.index() == 3) ? "High P * Entropy" :
+					("Topic " + (params.index() - 3).toString());
+	}
+});
+
+ko.components.register("word-prob", {
+	template: '<span data-bind="text: wordText"></span>',
+	viewModel: function (params) {
+		var me = this;
+		var wordProps = params.wp.w.split(",");
+		me.wordText = wordProps[0] + "/" + wordProps[1];
+	}
+});
+
+window.onload = function () { ko.applyBindings(); }
+})();
+</script>
+
+</head>
+<body>
+<root-node></root-node>
+</body>
+</html>

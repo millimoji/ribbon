@@ -17,8 +17,4 @@ move to `cd tools\script` and run `mecabtest.cmd` then, confirm output.txt shoul
 
 move to `cd tools\script` and run `cleardb.cmd`
 
-# prepare
-
-setup Microsoft Visual Studio International Feature Pack 2.0 from https://www.microsoft.com/ja-jp/download/confirmation.aspx?id=18970
-
 
