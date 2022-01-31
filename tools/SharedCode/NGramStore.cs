@@ -293,6 +293,7 @@ namespace Ribbon.Shared
         static Regex regexAmp = new Regex("&amp;");
         static Regex regexGt = new Regex("&gt;");
         static Regex regexLt = new Regex("&lt;");
+        static Regex regexCharCode = new Regex(@"&#[0-9A-Fa-f]{1,4};");
 
         string inputFilename;
         string outputFilename;
@@ -335,6 +336,14 @@ namespace Ribbon.Shared
                     newText = regexAmp.Replace(newText, "&");
                     newText = regexGt.Replace(newText, ">");
                     newText = regexLt.Replace(newText, "<");
+
+                    var matches = regexCharCode.Matches(newText);
+                    for (int i = matches.Count - 1; i >= 0; --i)
+                    {
+                        var hexString = matches[i].Value.Substring(2, matches[i].Value.Length - 1 - 2);
+                        char character = (char)UInt32.Parse(hexString, System.Globalization.NumberStyles.HexNumber);
+                        newText = newText.Substring(0, matches[i].Index) + character + newText.Substring(matches[i].Index + matches[i].Length);
+                    }
 
                     writeStream.WriteLine(newText);
                 }
