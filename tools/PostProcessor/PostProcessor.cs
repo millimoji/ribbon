@@ -25,6 +25,8 @@ namespace Ribbon.PostProcessor
             this.FindPhraseAndSave(nGramStore);
 
             this.SummarizeTopicModel(nGramStore);
+
+            Shared.FileOperation.Upload();
         }
 
         void FindPhraseAndSave(Shared.NGramStore nGramStore)

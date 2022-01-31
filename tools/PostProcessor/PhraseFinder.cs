@@ -244,6 +244,7 @@ namespace Ribbon.PostProcessor
         }
 
 
+        private static Regex matchFiller = new Regex(@",フィラー,");
         private static Regex matchNoReading = new Regex(@",\*,\*$");
         private static Regex matchNoTargeting = new Regex(@"(,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,|,記号,)");
         private static Regex followingType = new Regex(@"(,助詞,|,助動詞,|,非自立,|,接尾,)");
@@ -288,7 +289,7 @@ namespace Ribbon.PostProcessor
             {
                 return false;
             }
-            return wordArray.Any(x => matchNoReading.IsMatch(x) && !isNumber.IsMatch(x) && !isAlphabet.IsMatch(x) && !isExcludingSymbols.IsMatch(x));
+            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumber.IsMatch(x) && !isAlphabet.IsMatch(x) && !isExcludingSymbols.IsMatch(x));
         }
 
         bool isAllKatakana(string [] wordArray)
@@ -298,7 +299,7 @@ namespace Ribbon.PostProcessor
                 return false;
             }
             return wordArray.All(x => allKatakana.IsMatch(x))
-                && wordArray.Any(x => x.Split(',')[0].Length <= 2);
+                && wordArray.Any(x => (x.Split(',')[0].Length <= 2 || matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)));
         }
     }
 }

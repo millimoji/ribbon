@@ -119,17 +119,20 @@ namespace Ribbon.WebCrawler
                         this.lastSavedHour = DateTime.Now.Hour;
                         m_nGraphStore.SaveFile();
                         m_nGraphStore.LoadFromFile(2);
+                        Shared.FileOperation.RunPostProcessor();
                     }
                     else if (((this.lastSavedHour + saveInternvalHour) % 24) == DateTime.Now.Hour)
                     {
                         this.lastSavedHour = DateTime.Now.Hour;
                         this.isEveryHourMode = false;
                         m_nGraphStore.SaveFile();
+                        Shared.FileOperation.RunPostProcessor();
                     }
                     else if (this.isEveryHourMode && this.lastSavedHour != DateTime.Now.Hour)
                     {
                         this.lastSavedHour = DateTime.Now.Hour;
                         m_nGraphStore.SaveFile();
+                        Shared.FileOperation.RunPostProcessor();
                     }
                 }
                 Console.WriteLine("End: LoadWebAndAnalyze");
