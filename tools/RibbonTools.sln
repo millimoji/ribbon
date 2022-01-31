@@ -5,7 +5,16 @@ VisualStudioVersion = 16.0.32002.261
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebCrawler", "WebCrawler\WebCrawler.csproj", "{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SharedCode", "SharedCode\SharedCode.shproj", "{41F4032D-FD7E-4D1D-A6F6-F0E5BEE42CFA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostProcessor", "PostProcessor\PostProcessor.csproj", "{504CB11B-68B2-4E80-8D45-D7D975EB3F7E}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		SharedCode\SharedCode.projitems*{3536aff3-f3f0-49d4-bc63-cba4b7843277}*SharedItemsImports = 4
+		SharedCode\SharedCode.projitems*{41f4032d-fd7e-4d1d-a6f6-f0e5bee42cfa}*SharedItemsImports = 13
+		SharedCode\SharedCode.projitems*{504cb11b-68b2-4e80-8d45-d7d975eb3f7e}*SharedItemsImports = 4
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
@@ -15,6 +24,10 @@ Global
 		{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}.Release|Any CPU.Build.0 = Release|Any CPU
+		{504CB11B-68B2-4E80-8D45-D7D975EB3F7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{504CB11B-68B2-4E80-8D45-D7D975EB3F7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{504CB11B-68B2-4E80-8D45-D7D975EB3F7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{504CB11B-68B2-4E80-8D45-D7D975EB3F7E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

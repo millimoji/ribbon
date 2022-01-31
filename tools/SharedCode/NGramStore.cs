@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 
-namespace Ribbon.WebCrawler
+namespace Ribbon.Shared
 {
     class NGramStore
     {
@@ -35,16 +35,9 @@ namespace Ribbon.WebCrawler
         const string n5gramFileName = "n5gram.txt";
         const string n6gramFileName = "n6gram.txt";
         const string n7gramFileName = "n7gram.txt";
-        const string topicModelFileName = "topicmodel.txt";
-        const string topicModelSummaryFilename = "topicmodel-summary.json";
-        const string mixUnigramlFileName = "mixunigram.txt";
-        const string mixUnigramSummaryFilename = "mixunigram-summary.json";
         readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName,
-            topicModelFileName, topicModelSummaryFilename, mixUnigramlFileName, mixUnigramSummaryFilename };
+            Constants.topicModelFileName, Constants.topicModelSummaryFilename, Constants.mixUnigramlFileName, Constants.mixUnigramSummaryFilename };
         const string doHalfFileName = "dohalf";
-        const string old3prefix = "old3-";
-        const string old2prefix = "old2-";
-        const string old1prefix = "old-";
 
         TopicModelHandler m_topicModel;
         TopicModelHandler m_mixUnigram;
@@ -62,28 +55,7 @@ namespace Ribbon.WebCrawler
             m_topicModel = new TopicModelHandler(false /* isMixUnigram */);
             m_mixUnigram = new TopicModelHandler(true /* isMixUnigram */);
         }
-
-        public void SlideDataFile()
-        {
-            foreach (var fileName in fileNames)
-            {
-                try {
-                    File.Delete(m_workDir + old3prefix + fileName);
-                } catch (Exception) { }
-                try {
-                    File.Move(m_workDir + old2prefix + fileName, m_workDir + old3prefix + fileName);
-                } catch (Exception) { }
-                try {
-                    File.Move(m_workDir + old1prefix + fileName, m_workDir + old2prefix + fileName);
-                } catch (Exception) { }
-                try {
-                    File.Move(m_workDir + fileName, m_workDir + old1prefix + fileName);
-                } catch (Exception) { }
-                try {
-                    File.Delete(m_workDir + fileName);// just in case
-                } catch (Exception) { }
-            }
-        }
+        public Dictionary<Tuple<int, int, int, int, int, int, int>, long>[] nGramList { get { return this.m_nGrams;  } }
 
         public bool ShouldFlush()
         {
@@ -97,7 +69,7 @@ namespace Ribbon.WebCrawler
 
         public void SaveFile() // should 
         {
-            SlideDataFile();
+            FileOperation.SlideDataFile(this.fileNames, Constants.workingFolder);
 
             for (int nGram = 1; nGram <= 7; ++nGram)
             {
@@ -121,11 +93,11 @@ namespace Ribbon.WebCrawler
                 }
             }
 
-            m_topicModel.SaveToFile(m_workDir + topicModelFileName, m_workDir + topicModelSummaryFilename, (int id) => this.WordList[id]);
-            m_mixUnigram.SaveToFile(m_workDir + mixUnigramlFileName, m_workDir + mixUnigramSummaryFilename, (int id) => this.WordList[id]);
+            m_topicModel.SaveToFile(m_workDir + Constants.topicModelFileName, m_workDir + Constants.topicModelSummaryFilename, (int id) => this.WordList[id]);
+            m_mixUnigram.SaveToFile(m_workDir + Constants.mixUnigramlFileName, m_workDir + Constants.mixUnigramSummaryFilename, (int id) => this.WordList[id]);
         }
 
-        public void LoadFromFile(int divNum = 1)
+        public void LoadFromFile(int divNum = 1, int cutOut = 0)
         {
             if (File.Exists(m_workDir + doHalfFileName))
             {
@@ -166,10 +138,20 @@ namespace Ribbon.WebCrawler
                             {
                                 long hashValue = 0;
                                 long.TryParse(nGramLine[nGram], out hashValue);
-                                hashValue = hashValue / divNum;
-                                if (hashValue <= 0)
+                                if (cutOut > 0)
                                 {
-                                    continue;
+                                    if (hashValue < cutOut)
+                                    {
+                                        continue;
+                                    }
+                                }
+                                if (divNum > 0)
+                                {
+                                    hashValue = hashValue / divNum;
+                                    if (hashValue <= 0)
+                                    {
+                                        continue;
+                                    }
                                 }
 
                                 hashKeyList[0] = WordToWordId(nGramLine[0], nGram <= 1);
@@ -191,10 +173,10 @@ namespace Ribbon.WebCrawler
                 catch (Exception) { }
             }
 
-            this.m_topicModel.LoadFromFile(this.m_workDir + topicModelFileName,
+            this.m_topicModel.LoadFromFile(this.m_workDir + Constants.topicModelFileName,
                 (string word) => this.WordToWordId(word, false),
                 (int id) => this.WordList[id]);
-            this.m_mixUnigram.LoadFromFile(this.m_workDir + mixUnigramlFileName,
+            this.m_mixUnigram.LoadFromFile(this.m_workDir + Constants.mixUnigramlFileName,
                 (string word) => this.WordToWordId(word, false),
                 (int id) => this.WordList[id]);
         }
@@ -238,6 +220,13 @@ namespace Ribbon.WebCrawler
         {
             m_topicModel.PrintCurretState();
             m_mixUnigram.PrintCurretState();
+        }
+
+        public Tuple<Func<int, string>, Func<string, int>> GetWordIdMapper()
+        {
+            return new Tuple<Func<int, string>, Func<string, int>>(
+                    (int wordId) => this.WordList[wordId],
+                    (string word) => this.WordToWordId(word, false));
         }
 
         int WordToWordId(string word, bool createNew = true)
@@ -301,6 +290,9 @@ namespace Ribbon.WebCrawler
     public class MorphAnalyzer
     {
         static Regex regexNbsp = new Regex("&nbsp;");
+        static Regex regexAmp = new Regex("&amp;");
+        static Regex regexGt = new Regex("&gt;");
+        static Regex regexLt = new Regex("&lt;");
 
         string inputFilename;
         string outputFilename;
@@ -340,6 +332,10 @@ namespace Ribbon.WebCrawler
                 foreach (var text in srcText)
                 {
                     var newText = regexNbsp.Replace(text, "　");
+                    newText = regexAmp.Replace(newText, "&");
+                    newText = regexGt.Replace(newText, ">");
+                    newText = regexLt.Replace(newText, "<");
+
                     writeStream.WriteLine(newText);
                 }
             }
@@ -349,7 +345,7 @@ namespace Ribbon.WebCrawler
         {
             string parameters = string.Format("--input-buffer-size={0} --output={1} {2}", 0x8000, outputFilename, inputFilename);
 
-            System.Diagnostics.ProcessStartInfo processStart = new System.Diagnostics.ProcessStartInfo(Program.mecabExe, parameters);
+            System.Diagnostics.ProcessStartInfo processStart = new System.Diagnostics.ProcessStartInfo(Constants.mecabExe, parameters);
             processStart.CreateNoWindow = true;
             processStart.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
 

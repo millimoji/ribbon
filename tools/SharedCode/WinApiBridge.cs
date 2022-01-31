@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 
-namespace Ribbon.WebCrawler
+namespace Ribbon.Shared
 {
     static class WinApiBridge
     {

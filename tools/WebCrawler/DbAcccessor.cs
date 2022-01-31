@@ -182,11 +182,11 @@ namespace Ribbon.WebCrawler
             }
             catch (Exception e)
             {
-                Logger.Log(e.ToString());
+                Shared.Logger.Log(e.ToString());
 
                 string insertingList = "";
                 insertUrlList.ForEach(url => { insertingList += "[" + url.orgUrl + "]"; });
-                Logger.Log(insertingList);
+                Shared.Logger.Log(insertingList);
             }
 
             var insertHostnameList = hostNames
@@ -201,10 +201,10 @@ namespace Ribbon.WebCrawler
             }
             catch (Exception ex)
             {
-                Logger.Log(ex.ToString());
+                Shared.Logger.Log(ex.ToString());
                 string insertingList = "";
                 insertHostnameList.ForEach(name => { insertingList += "[" + name + "]"; });
-                Logger.Log(insertingList);
+                Shared.Logger.Log(insertingList);
                 Recoonect();
             }
         }
@@ -217,7 +217,7 @@ namespace Ribbon.WebCrawler
             }
             catch (Exception ex)
             {
-                Logger.Log(ex.ToString());
+                Shared.Logger.Log(ex.ToString());
                 Recoonect();
             }
 
@@ -247,7 +247,7 @@ namespace Ribbon.WebCrawler
             }
             catch (Exception ex)
             {
-                Logger.Log(ex.ToString());
+                Shared.Logger.Log(ex.ToString());
                 Recoonect();
             }
             if (insertList.Count > 0)
@@ -259,10 +259,10 @@ namespace Ribbon.WebCrawler
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log(ex.ToString());
+                    Shared.Logger.Log(ex.ToString());
                     string xlist = "";
                     insertList.ForEach(x => { xlist += "[" + x.url + "],"; });
-                    Logger.Log(xlist);
+                    Shared.Logger.Log(xlist);
                     Recoonect();
                 }
             }
@@ -340,7 +340,7 @@ namespace Ribbon.WebCrawler
             }
             catch (Exception ex)
             {
-                Logger.Log(ex.ToString());
+                Shared.Logger.Log(ex.ToString());
                 Recoonect();
             }
 

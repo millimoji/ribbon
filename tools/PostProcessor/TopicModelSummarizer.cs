@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace Ribbon.WebCrawler
+namespace Ribbon.PostProcessor
 {
     namespace JsonType
     {
@@ -26,29 +26,33 @@ namespace Ribbon.WebCrawler
         public class SummaryStruct
         {
             public string generatedTime { get; set; }
+            public string summaryType { get; set; }
             public TopicModelSummary tps { get; set; } = new TopicModelSummary();
             public List<WP[]> topicModel { get; set; }
         }
     }
 
-    class JsonSummarizer
+    class TopicModelSummarizer
     {
         private const int summryItemCount = 100;
 
-        public void Serialize(
+        public void MakeSumarize(
             string fileName,
-            double averagePerplexity,
-            double latestPerplexity,
-            double [] topicProbs,
-            Dictionary<int, double[]> wordProbMatrix,
+            Shared.TopicModelHandler topicModelHandler,
             Func<int, string> id2word)
         {
+            var wordProbMatrix = topicModelHandler.wordProbsMatrix;
+            var topicProbs = topicModelHandler.topicProbsArray;
+            var averagePerplexity = topicModelHandler.GetPerplexyAvarage();
+            var latestPerplexity = topicModelHandler.lastPerplexicity;
+
             if (wordProbMatrix.Count == 0)
             {
                 return;
             }
-            var summary = new Ribbon.WebCrawler.JsonType.SummaryStruct();
+            var summary = new JsonType.SummaryStruct();
             summary.generatedTime = DateTime.Now.ToString();
+            summary.summaryType = Constants.summaryTopicModel;
             summary.tps.perplexity = Double.IsInfinity(averagePerplexity) || Double.IsNaN(averagePerplexity) ? 0.0 : averagePerplexity;
             summary.tps.latestPerplexity = Double.IsInfinity(latestPerplexity) || Double.IsNaN(latestPerplexity) ? 0.0 : latestPerplexity;
 
@@ -86,7 +90,7 @@ namespace Ribbon.WebCrawler
             var entropyList = wordProbMatrix
                 .Select(kv =>
                 {
-                    TopicModelHandler.DoubleForEach(normalizeWork, (double x, int idx) => (topicProbs[idx] * kv.Value[idx]));
+                    Shared.TopicModelHandler.DoubleForEach(normalizeWork, (double x, int idx) => (topicProbs[idx] * kv.Value[idx]));
                     var sum = normalizeWork.Sum();
                     var pLogPs = normalizeWork.Select(l =>
                     {
@@ -161,7 +165,7 @@ namespace Ribbon.WebCrawler
             var process = System.Diagnostics.Process.GetCurrentProcess(); // Or whatever method you are using
             string fullPath = process.MainModule.FileName;
             var folder = Path.GetDirectoryName(fullPath);
-            var ftpUploader = Path.Combine(folder, Program.ftpUploader);
+            var ftpUploader = Path.Combine(folder, Constants.ftpUploader);
 
             System.Diagnostics.ProcessStartInfo processStart = new System.Diagnostics.ProcessStartInfo("cmd.exe", "/C " + ftpUploader);
             processStart.CreateNoWindow = true;

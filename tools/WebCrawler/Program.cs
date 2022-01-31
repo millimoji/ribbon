@@ -8,11 +8,6 @@ namespace Ribbon.WebCrawler
 {
     class Program
     {
-        // constants
-        public const string mecabExe = "c:\\Program Files (x86)\\MeCab\\bin\\mecab.exe";
-        public const string workingFolder = "c:\\lmworking\\";
-        public const string ftpUploader = "..\\..\\..\\webui\\ftpupload.cmd";
-
         static void Main(string[] args)
         {
             var me = new Program();
@@ -29,9 +24,9 @@ namespace Ribbon.WebCrawler
         const int saveInternvalHour = 6;
         const int parallelDownload = 20;
 
-        MorphAnalyzer m_morphAnalyzer = new MorphAnalyzer(workingFolder);
-        NGramStore m_nGraphStore = new NGramStore(workingFolder);
-        DbAcccessor m_dbAcccessor = new DbAcccessor(workingFolder);
+        Shared.MorphAnalyzer m_morphAnalyzer = new Shared.MorphAnalyzer(Constants.workingFolder);
+        Shared.NGramStore m_nGraphStore = new Shared.NGramStore(Constants.workingFolder);
+        DbAcccessor m_dbAcccessor = new DbAcccessor(Constants.workingFolder);
         private int lastSavedHour = DateTime.Now.Hour;
         private bool isEveryHourMode = true;
 

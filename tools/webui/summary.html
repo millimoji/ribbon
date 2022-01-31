@@ -43,6 +43,20 @@ word-prob {
 	font-size: 12px;
 }
 
+
+ul.phrase-list {
+	display: flex;
+	flex-direction: column;
+	flex-wrap: nowrap;
+	border-right: 1px solid black;
+}
+phrase-item {
+	display: inline-block;
+	margin-left: 1ch;
+	min-width: 20ch;
+	font-size: 12px;
+}
+
 </style>
 <script type='text/javascript' src='https://ajax.aspnetcdn.com/ajax/knockout/knockout-3.5.0.js'></script>
 <script>
@@ -51,8 +65,19 @@ word-prob {
 function DataModel()
 {
 	var me = this;
+
+	// const
+	me.mixUnigramSummaryJson = "mixunigram-summary.json";
+	me.topicModelSummaryJson = "topicmodel-summary.json";
+	me.phraseListSummaryJson = "phrase-list-summary.json";
+	me.summaryTypeTopicModel = "topicModel";
+	me.summaryTypePhraseList = "phraseList";
+
+	// model
 	me.dataModel = ko.observable(null);
+	me.summaryType = ko.observable("");
 	me.generatedTime = ko.observable("");
+	// topic model data
 	me.tps = {
 		perplexity: ko.observable("0"),
 		latestPerplexity: ko.observable("0"),
@@ -60,17 +85,34 @@ function DataModel()
 		entropyAverage: ko.observable("0"),
 	};
 	me.topicModel = ko.observableArray([]);
+	// phrase list data
+	me.pl = {
+		phraseList: ko.observableArray([]),
+		unknownPhrase: ko.observableArray([]),
+		unknownKatakana: ko.observableArray([])
+	};
 
-	me.reloadJson = (isMixUnigram) => {
-		var utl = isMixUnigram ? "mixunigram-summary.json" : "topicmodel-summary.json";
-		me.downloadJson(utl).then(dataModel => {
-			me.dataModel(dataModel);
-			me.generatedTime(dataModel.generatedTime);
-			me.tps.perplexity(dataModel.tps.perplexity.toString());
-			me.tps.latestPerplexity(dataModel.tps.latestPerplexity.toString());
-			me.tps.topicEntropy(dataModel.tps.topicEntropy.toString());
-			me.tps.entropyAverage(dataModel.tps.entropyAverage.toString());
-			me.topicModel(dataModel.topicModel);
+	me.reloadJson = (jsonUrl) => {
+		me.downloadJson(jsonUrl).then(dataModel => {
+			me.summaryType(dataModel.summaryType);
+			if (dataModel.summaryType === me.summaryTypeTopicModel)
+			{
+				me.dataModel(dataModel);
+				me.generatedTime(dataModel.generatedTime);
+				me.tps.perplexity(dataModel.tps.perplexity.toString());
+				me.tps.latestPerplexity(dataModel.tps.latestPerplexity.toString());
+				me.tps.topicEntropy(dataModel.tps.topicEntropy.toString());
+				me.tps.entropyAverage(dataModel.tps.entropyAverage.toString());
+				me.topicModel(dataModel.topicModel);
+			}
+			else
+			{
+				me.dataModel(dataModel);
+				me.generatedTime(dataModel.generatedTime);
+				me.pl.phraseList(dataModel.phraseList);
+				me.pl.unknownPhrase(dataModel.unknownPhrase);
+				me.pl.unknownKatakana(dataModel.unknownKatakana);
+			}
 		});
 	};
 
@@ -102,15 +144,22 @@ ko.components.register("root-node", {
 		'<h1>Summary Page <span data-bind="text: generatedTime"></span></h1>' + 
 		'<button data-bind="click: onLoadTopicModel">TopicModel</button>' +
 		'<button data-bind="click: onLoadMixUnigram">MixUnigram</button>' +
-		'<topic-model-summary params="dataModel:dataModel"></topic-model-summary>'
+		'<button data-bind="click: onLoadPhraseList">PhraseList</button>' +
+		'<!-- ko if: isTopicModel --><topic-model-summary params="dataModel:dataModel"></topic-model-summary><!-- /ko -->' +
+		'<!-- ko if: isPhraseList --><phrase-list-summary params="dataModel:dataModel"></phrase-list-summary><!-- /ko -->'
 	,
 	viewModel: function (params) {
 		var me = this;
 		me.dataModel = new DataModel();
 		me.generatedTime = me.dataModel.generatedTime;
-		me.onLoadTopicModel = function () { me.dataModel.reloadJson(false); };
-		me.onLoadMixUnigram = function () { me.dataModel.reloadJson(true); };
-		me.dataModel.reloadJson(false);
+
+		me.isTopicModel = ko.pureComputed(() => (me.dataModel.summaryType() === me.dataModel.summaryTypeTopicModel));
+		me.isPhraseList = ko.pureComputed(() => (me.dataModel.summaryType() === me.dataModel.summaryTypePhraseList));
+
+		me.onLoadTopicModel = function () { me.dataModel.reloadJson(me.dataModel.topicModelSummaryJson); };
+		me.onLoadMixUnigram = function () { me.dataModel.reloadJson(me.dataModel.mixUnigramSummaryJson); };
+		me.onLoadPhraseList = function () { me.dataModel.reloadJson(me.dataModel.phraseListSummaryJson); };
+		me.dataModel.reloadJson(me.dataModel.phraseListSummaryJson);
 	}
 });
 
@@ -162,6 +211,62 @@ ko.components.register("word-prob", {
 		var me = this;
 		var wordProps = params.wp.w.split(",");
 		me.wordText = wordProps[0] + "/" + wordProps[1];
+	}
+});
+
+ko.components.register("phrase-list-summary", {
+	template:
+		'<ul class="phrase-lsit-list">' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span data-bind="text: predictionTitle"></span></li>' +
+					'<!-- ko foreach: phraseList -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span data-bind="text: unknownPhraseTitle"></span></li>' +
+					'<!-- ko foreach: unknownPhrase -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span data-bind="text: unknownKatakanaTitle"></span></li>' +
+					'<!-- ko foreach: unknownKatakana -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
+		'</ul>'
+	,
+	viewModel: function (params) {
+		var me = this;
+		me.predictionTitle = "Phrases";
+		me.unknownPhraseTitle = "Unknown";
+		me.unknownKatakanaTitle = "Katakana";
+
+		me.phraseList = params.dataModel.pl.phraseList;
+		me.unknownPhrase = params.dataModel.pl.unknownPhrase;
+		me.unknownKatakana = params.dataModel.pl.unknownKatakana;
+	}
+});
+
+ko.components.register("phrase-item", {
+	template:
+		'<!-- ko foreach: words --><span data-bind="attr: { title:pos }, text:text"></span>/<!-- /ko -->'
+	,
+	viewModel: function (params) {
+		var me = this;
+		me.words = params.ph.w.map(x => {
+			return {
+				pos: x,
+				text: x.split(",")[0]
+			};
+		});
 	}
 });
 

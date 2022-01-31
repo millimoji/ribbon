@@ -17,4 +17,9 @@ move to `cd tools\script` and run `mecabtest.cmd` then, confirm output.txt shoul
 
 move to `cd tools\script` and run `cleardb.cmd`
 
+# .NET Framework 4.8
+
+https://dotnet.microsoft.com/en-us/download/dotnet-framework/thank-you/net48-developer-pack-offline-installer
+
+
 

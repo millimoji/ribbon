@@ -4,10 +4,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}</ProjectGuid>
+    <ProjectGuid>{504CB11B-68B2-4E80-8D45-D7D975EB3F7E}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>WebCrawler</RootNamespace>
-    <AssemblyName>WebCrawler</AssemblyName>
+    <RootNamespace>PostProcessor</RootNamespace>
+    <AssemblyName>PostProcessor</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -36,7 +36,6 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Data.Linq" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -45,18 +44,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BadWordFilter.cs" />
-    <Compile Include="DbAcccessor.cs" />
+    <Compile Include="PhraseFinder.cs" />
+    <Compile Include="PostProcessor.cs" />
+    <Compile Include="TopicModelSummarizer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WebContentAccessor.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="HtmlAgilityPack">
-      <Version>1.8.4</Version>
+    <PackageReference Include="System.Text.Json">
+      <Version>6.0.1</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="..\SharedCode\SharedCode.projitems" Label="Shared" />

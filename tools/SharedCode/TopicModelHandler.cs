@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace Ribbon.WebCrawler
+namespace Ribbon.Shared
 {
     class TopicModelState
     {
@@ -478,6 +478,21 @@ namespace Ribbon.WebCrawler
             this.ppHist.Enqueue(0.0);
         }
 
+        public Dictionary<int, double[]> wordProbsMatrix
+        {
+            get { return this.baseState.wordProbs; }
+        }
+
+        public double[] topicProbsArray
+        {
+            get { return this.baseState.averageTopicProbs; }
+        }
+
+        public double lastPerplexicity
+        {
+            get { return this.ppHist.Last(); }
+        }
+
         public void LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word)
         {
             this.ClearStoredData();
@@ -503,11 +518,6 @@ namespace Ribbon.WebCrawler
             this.ClearStoredData();
 
             this.baseState.SaveToFile(fileName, id2Word);
-
-            {
-                var summarizer = new JsonSummarizer();
-                summarizer.Serialize(summaryFilename, this.ppHist.Average(), this.ppHist.Last(), this.baseState.averageTopicProbs, this.baseState.wordProbs, id2Word);
-            }
         }
 
         public void LearnDocument(List<string> document, Func<string, int> word2id)
@@ -579,7 +589,6 @@ namespace Ribbon.WebCrawler
                 this.baseState.FinalizeTopicModel(TopicModelHandler.updateMergeRate);
 
             this.ClearStoredData();
-
         }
 
         private List<int> WordArrayToIntArray(List<string> document, Func<string, int> word2id)
@@ -616,7 +625,7 @@ namespace Ribbon.WebCrawler
                 false : true;
         }
 
-        private double GetPerplexyAvarage()
+        public double GetPerplexyAvarage()
         {
             if (this.ppHist.Count == 0)
             {
