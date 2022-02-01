@@ -47,7 +47,7 @@ namespace Ribbon.PostProcessor
 
             var topicModelSummarizer = new TopicModelSummarizer();
             topicModelSummarizer.MakeSumarize(Constants.workingFolder + Constants.topicModelSummaryFilename, topicModelHandler, wordIdMapper.Item1);
-            topicModelSummarizer.MakeSumarize(Constants.workingFolder + Constants.mixUnigramlFileName, mixedUnigramHandler, wordIdMapper.Item1);
+            topicModelSummarizer.MakeSumarize(Constants.workingFolder + Constants.mixUnigramSummaryFilename, mixedUnigramHandler, wordIdMapper.Item1);
         }
     }
 }

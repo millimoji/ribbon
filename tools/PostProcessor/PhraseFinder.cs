@@ -172,23 +172,45 @@ namespace Ribbon.PostProcessor
 
         void CalcChildrenProbsdRecv(WordTreeItem parent)
         {
-            long sum = 0;
-
-            foreach (var kv in parent.children)
+            if (parent.children.Count == 0)
             {
-                sum += kv.Value.count;
+                return;
             }
-
-            double entropyWork = 0.0;
-            foreach (var kv in parent.children)
+            if (parent.children.Count == 1)
             {
-                var prob = (double)kv.Value.count / (double)sum;
-                kv.Value.nGramProb = prob;
-                entropyWork += prob * Math.Log(prob) / this.log2;
+                parent.entropy = 0.0;
             }
+            else
+            {
+                long sum = 0;
 
-            var maxEntropy = -Math.Log(1.0 / (double)parent.children.Count) / this.log2;
-            parent.entropy = -entropyWork / maxEntropy;
+                foreach (var kv in parent.children)
+                {
+                    sum += kv.Value.count;
+                }
+
+                if (sum == 0.0)
+                {
+                    throw new Exception("sum is 0");
+                }
+
+                double entropyWork = 0.0;
+                foreach (var kv in parent.children)
+                {
+                    var prob = (double)kv.Value.count / (double)sum;
+                    kv.Value.nGramProb = prob;
+                    entropyWork += prob * Math.Log(prob) / this.log2;
+                }
+
+                var maxEntropy = -Math.Log(1.0 / (double)parent.children.Count) / this.log2;
+
+                if (maxEntropy == 0.0)
+                {
+                    throw new Exception("maxEntropy is 0");
+                }
+
+                parent.entropy = -entropyWork / maxEntropy;
+            }
 
             foreach (var kv in parent.children)
             {
@@ -200,6 +222,11 @@ namespace Ribbon.PostProcessor
         }
         void CalcPhraseProbRecv(WordTreeItem parent, int leftTrace, double total)
         {
+            if (total == 0.0)
+            {
+                throw new Exception("total is 0.0");
+            }
+
             foreach (var kv in parent.children)
             {
                 if (leftTrace == 0)
