@@ -30,10 +30,15 @@ namespace Ribbon.Shared
             this.NormalizeDoubleList(this.averageTopicProbs);
         }
 
-        public void SaveToFile(string fileName, Func<int, string> id2word)
+        public void SaveToFile(string fileName, Func<int, string> id2word, double avePp, double minPp, double latestPp)
         {
             using (StreamWriter fileStream = new StreamWriter(fileName, false, Encoding.Unicode))
             {
+                {
+                    var outputLine = "[Perplexity]\t" + String.Join("\t", new double[] { avePp, minPp, latestPp });
+                    fileStream.WriteLine(outputLine);
+                }
+
                 {
                     var outputLine = "[Topic]\t" + String.Join("\t", this.averageTopicProbs);
                     fileStream.WriteLine(outputLine);
@@ -57,7 +62,7 @@ namespace Ribbon.Shared
             }
         }
 
-        public bool LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word)
+        public bool LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word, ref double [] pps)
         {
             if (!File.Exists(fileName))
             {
@@ -67,6 +72,18 @@ namespace Ribbon.Shared
             {
                 string line = fileStream.ReadLine();
                 string[] headerLine = line.Split('\t');
+
+                if (headerLine[0] == "[Perplexity]")
+                {
+                    pps[0] = Convert.ToDouble(headerLine[1]); // ave
+                    pps[1] = Convert.ToDouble(headerLine[2]); // min
+                    pps[2] = Convert.ToDouble(headerLine[3]); // latest
+
+                    // ignore just skip
+                    line = fileStream.ReadLine();
+                    headerLine = line.Split('\t');
+                }
+
                 if (headerLine[0] != "[Topic]")
                 {
                     return false;
@@ -466,6 +483,7 @@ namespace Ribbon.Shared
         private HashSet<int> uniqueWord = new HashSet<int>();
         private bool isMixUniModel = false;
         private string logPrefix;
+        private double[] loadedPp = new double[] { 0.0, 0.0, 0.0 };
 
         public TopicModelHandler(bool isMixUnigram)
         {
@@ -493,11 +511,16 @@ namespace Ribbon.Shared
             get { return this.ppHist.Last(); }
         }
 
+        public double [] loadedPerplexities
+        {
+            get {  return this.loadedPp; }
+        }
+
         public void LoadFromFile(string fileName, Func<string, int> word2id, Func<int, string> id2word)
         {
             this.ClearStoredData();
-
-            this.baseState.LoadFromFile(fileName, word2id, id2word);
+                        
+            this.baseState.LoadFromFile(fileName, word2id, id2word, ref this.loadedPp);
         }
 
         private void ClearStoredData()
@@ -517,7 +540,7 @@ namespace Ribbon.Shared
             // LearnLoopUntilPPTarget();
             this.ClearStoredData();
 
-            this.baseState.SaveToFile(fileName, id2Word);
+            this.baseState.SaveToFile(fileName, id2Word, this.GetPerplexyAverage(), this.ppHist.Min(), this.ppHist.Last());
         }
 
         public void LearnDocument(List<string> document, Func<string, int> word2id)
@@ -625,7 +648,7 @@ namespace Ribbon.Shared
                 false : true;
         }
 
-        public double GetPerplexyAvarage()
+        public double GetPerplexyAverage()
         {
             if (this.ppHist.Count == 0)
             {

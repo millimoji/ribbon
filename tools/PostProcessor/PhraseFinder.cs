@@ -13,6 +13,7 @@ namespace Ribbon.PostProcessor
     {
         public string [] w { get; set; } // word array
         public double p { get; set; } // probability
+        public long c { get; set; } // count
     }
 
     public class PhraseSummary
@@ -21,6 +22,7 @@ namespace Ribbon.PostProcessor
         public string generatedTime { get; set; }
         public List<Phrase> phraseList { get; set; }
         public List<Phrase> unknownPhrase { get; set; }
+        public List<Phrase> unknownWords { get; set; }
         public List<Phrase> unknownKatakana { get; set; }
     }
 
@@ -59,7 +61,7 @@ namespace Ribbon.PostProcessor
             this.StoreWords(nGramStore);
 
             var scoredPhraseList = new List<Tuple<double, WordTreeItem>>();
-            this.EvaluateWord(this.forward, scoredPhraseList, 2, 6,
+            this.EvaluateWord(this.forward, scoredPhraseList, 1, 6,
                 (WordTreeItem wi) => (wi.phraseProb * wi.entropy * wi.pairItem.entropy));
 
             // TODO: result text
@@ -70,25 +72,36 @@ namespace Ribbon.PostProcessor
 
             var sortedAllPhrases = scoredPhraseList
                 .OrderByDescending(x => x.Item1)
+                //.Where(x => x.Item2.wordArray.Length > 1)
                 .Select(x =>
                 {
                     var phrase = new Phrase();
                     phrase.w = x.Item2.wordArray.Select(w => wordIdMappter.Item1(w)).ToArray();
                     phrase.p = x.Item1;
+                    phrase.c = x.Item2.count;
                     return phrase;
                 });
 
             phraseSummary.phraseList = sortedAllPhrases
+                .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.isAvailableAsPrediciton(phrase.w))
                 .Take(100)
                 .ToList();
 
             phraseSummary.unknownPhrase = sortedAllPhrases
+                .Where(phrase => phrase.w.Length > 1)
+                .Where(phrase => this.hasUnknownWords(phrase.w))
+                .Take(100)
+                .ToList();
+
+            phraseSummary.unknownWords = sortedAllPhrases
+                .Where(phrase => phrase.w.Length == 1)
                 .Where(phrase => this.hasUnknownWords(phrase.w))
                 .Take(100)
                 .ToList();
 
             phraseSummary.unknownKatakana = sortedAllPhrases
+                .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.isAllKatakana(phrase.w))
                 .Take(100)
                 .ToList();
@@ -112,7 +125,7 @@ namespace Ribbon.PostProcessor
                     var score = calculater(kv.Value);
                     scoredList.Add(new Tuple<double, WordTreeItem>(score, kv.Value));
                 }
-                if (kv.Value.wordArray.Length < maxnGram)
+                if (kv.Value.wordArray.Length <= maxnGram)
                 {
                     this.EvaluateWord(kv.Value, scoredList, minNgram, maxnGram, calculater);
                 }
@@ -280,7 +293,7 @@ namespace Ribbon.PostProcessor
         private static Regex allKatakana = new Regex(@"^[ァ-ヶー]+,");
         private static Regex isNumber = new Regex(@",名詞,数,");
         private static Regex isAlphabet = new Regex(@"^[Ａ-Ｚａ-ｚ]+,");
-        private static Regex isExcludingSymbols = new Regex(@"^[（）．，＆＃；－／％]+,");
+        // private static Regex isExcludingSymbols = new Regex(@"^[（）．，＆＃；－／％]+,");
 
         bool isAvailableAsPrediciton(string[] wordArray)
         {
@@ -307,6 +320,11 @@ namespace Ribbon.PostProcessor
                     return false;
                 }
             }
+            if (wordArray.Select(x => x.Split(new char[] { ',' })[8].Length).Sum() < 4)
+            {
+                return false;
+            }
+
             return true;
         }
 
@@ -316,7 +334,7 @@ namespace Ribbon.PostProcessor
             {
                 return false;
             }
-            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumber.IsMatch(x) && !isAlphabet.IsMatch(x) && !isExcludingSymbols.IsMatch(x));
+            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumber.IsMatch(x) && !isAlphabet.IsMatch(x) /* && !isExcludingSymbols.IsMatch(x) */);
         }
 
         bool isAllKatakana(string [] wordArray)
