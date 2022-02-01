@@ -29,6 +29,7 @@ namespace Ribbon.WebCrawler
         DbAcccessor m_dbAcccessor = new DbAcccessor(Constants.workingFolder);
 
         private DateTime lastSavedTime = DateTime.Now;
+        private DateTime programStartTime = DateTime.Now;
         private bool isEveryHourMode = true;
 
         void Run()
@@ -128,12 +129,12 @@ namespace Ribbon.WebCrawler
                         if (passedTime.TotalMinutes >= (new TimeSpan(saveInternvalHour, 0, 0)).TotalMinutes)
                         {
                             this.lastSavedTime = DateTime.Now;
-                            this.isEveryHourMode = false;
                             m_nGraphStore.SaveFile();
                             Shared.FileOperation.RunPostProcessor();
                         }
                         else if (this.isEveryHourMode && passedTime.TotalMinutes >= (new TimeSpan(1, 0, 0)).TotalMinutes)
                         {
+                            this.isEveryHourMode = ((DateTime.Now - this.programStartTime).TotalMinutes < (new TimeSpan(saveInternvalHour, 0, 0)).TotalMinutes);
                             this.lastSavedTime = DateTime.Now;
                             m_nGraphStore.SaveFile();
                             Shared.FileOperation.RunPostProcessor();
