@@ -394,11 +394,20 @@ namespace Ribbon.Shared
                     string oneWord = WinApiBridge.Han2Zen(outPair[0]);
 
                     // normalizer
-                    if (this.normalizeTargetsRegex.IsMatch(oneWord))
+                    if (this.normalizeSymbolRegex.IsMatch(oneWord))
                     {
                         foreach (var ch in oneWord)
                         {
-                            building.Add(this.normalizedList[ch.ToString()]);
+                            building.Add(this.normalizeSymbolHash[ch.ToString()]);
+                        }
+                    }
+                    else if (this.normalizeTextRegex.IsMatch(oneWord))
+                    {
+                        var match = this.normalizeTextRegex.Match(oneWord);
+                        var replaceSource = this.normalizeTextHash[match.Value];
+                        foreach (var attrText in replaceSource)
+                        {
+                            building.Add(attrText);
                         }
                     }
                     else
@@ -412,7 +421,7 @@ namespace Ribbon.Shared
             return result;
         }
 
-        private static string[] normalizeTargetList = new string[]
+        private static string[] normalizeSymbolList = new string[]
         {
             "・,記号,一般,*,*,*,*,・,・,・",
             "：,記号,一般,*,*,*,*,：,：,：",
@@ -436,22 +445,34 @@ namespace Ribbon.Shared
             "【,記号,括弧開,*,*,*,*,【,【,【",
             "】,記号,括弧閉,*,*,*,*,】,】,】",
         };
-        private Dictionary<string, string> normalizedList;
-        private Regex normalizeTargetsRegex;
+        private Dictionary<string, string> normalizeSymbolHash;
+        private Regex normalizeSymbolRegex;
+
+        private Dictionary<string, string[]> normalizeTextHash = new Dictionary<string, string[]>()
+        {
+            { "コロナウイルスワクチン", new string [] { "コロナ,名詞,一般,*,*,*,*,コロナ,コロナ,コロナ", "ウイルス,名詞,一般,*,*,*,*,ウイルス,ウイルス,ウイルス", "ワクチン,名詞,一般,*,*,*,*,ワクチン,ワクチン,ワクチン" } },
+            { "キャンプ", new string [] { "キャンプ,名詞,サ変接続,*,*,*,*,キャンプ,キャンプ,キャンプ" } },
+        };
+        private Regex normalizeTextRegex;
 
         private void SetupNormalizeData()
         {
-            if (this.normalizedList == null)
+            if (this.normalizeSymbolHash == null)
             {
-                this.normalizedList = new Dictionary<string, string>();
+                this.normalizeSymbolHash = new Dictionary<string, string>();
                 var regexList = "";
-                foreach (var target in normalizeTargetList)
+                foreach (var target in normalizeSymbolList)
                 {
                     var display = target.Split(new char[] { ',' })[0];
                     regexList += display;
-                    this.normalizedList.Add(display, target);
+                    this.normalizeSymbolHash.Add(display, target);
                 }
-                this.normalizeTargetsRegex = new Regex("^[" + regexList + "]+$");
+                this.normalizeSymbolRegex = new Regex("^[" + regexList + "]+$");
+            }
+            if (this.normalizeTextRegex == null)
+            {
+                var regexText = String.Join("|", this.normalizeTextHash.Keys.ToArray());
+                this.normalizeTextRegex = new Regex("^(" + regexText + ")$");
             }
         }
     }
