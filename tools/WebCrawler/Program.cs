@@ -27,7 +27,8 @@ namespace Ribbon.WebCrawler
         Shared.MorphAnalyzer m_morphAnalyzer = new Shared.MorphAnalyzer(Constants.workingFolder);
         Shared.NGramStore m_nGraphStore = new Shared.NGramStore(Constants.workingFolder);
         DbAcccessor m_dbAcccessor = new DbAcccessor(Constants.workingFolder);
-        private int lastSavedHour = DateTime.Now.Hour;
+
+        private DateTime lastSavedTime = DateTime.Now;
         private bool isEveryHourMode = true;
 
         void Run()
@@ -116,23 +117,27 @@ namespace Ribbon.WebCrawler
                 {
                     if (m_nGraphStore.ShouldFlush())
                     {
-                        this.lastSavedHour = DateTime.Now.Hour;
+                        this.lastSavedTime = DateTime.Now;
                         m_nGraphStore.SaveFile();
                         m_nGraphStore.LoadFromFile(2);
                         Shared.FileOperation.RunPostProcessor();
                     }
-                    else if (((this.lastSavedHour + saveInternvalHour) % 24) == DateTime.Now.Hour)
+                    else
                     {
-                        this.lastSavedHour = DateTime.Now.Hour;
-                        this.isEveryHourMode = false;
-                        m_nGraphStore.SaveFile();
-                        Shared.FileOperation.RunPostProcessor();
-                    }
-                    else if (this.isEveryHourMode && this.lastSavedHour != DateTime.Now.Hour)
-                    {
-                        this.lastSavedHour = DateTime.Now.Hour;
-                        m_nGraphStore.SaveFile();
-                        Shared.FileOperation.RunPostProcessor();
+                        var passedTime = DateTime.Now - this.lastSavedTime;
+                        if (passedTime.TotalMinutes >= (new TimeSpan(saveInternvalHour, 0, 0)).TotalMinutes)
+                        {
+                            this.lastSavedTime = DateTime.Now;
+                            this.isEveryHourMode = false;
+                            m_nGraphStore.SaveFile();
+                            Shared.FileOperation.RunPostProcessor();
+                        }
+                        else if (this.isEveryHourMode && passedTime.TotalMinutes >= (new TimeSpan(1, 0, 0)).TotalMinutes)
+                        {
+                            this.lastSavedTime = DateTime.Now;
+                            m_nGraphStore.SaveFile();
+                            Shared.FileOperation.RunPostProcessor();
+                        }
                     }
                 }
                 Console.WriteLine("End: LoadWebAndAnalyze");
