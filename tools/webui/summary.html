@@ -89,6 +89,7 @@ function DataModel()
 	me.pl = {
 		phraseList: ko.observableArray([]),
 		unknownPhrase: ko.observableArray([]),
+		unknownWords: ko.observableArray([]),
 		unknownKatakana: ko.observableArray([])
 	};
 
@@ -111,6 +112,7 @@ function DataModel()
 				me.generatedTime(dataModel.generatedTime);
 				me.pl.phraseList(dataModel.phraseList);
 				me.pl.unknownPhrase(dataModel.unknownPhrase);
+				me.pl.unknownWords(dataModel.unknownWords);
 				me.pl.unknownKatakana(dataModel.unknownKatakana);
 			}
 		});
@@ -235,6 +237,14 @@ ko.components.register("phrase-list-summary", {
 			'</li>' +
 			'<li class="phrase-list-container">' +
 				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span data-bind="text: unknownWordsTitle"></span></li>' +
+					'<!-- ko foreach: unknownWords -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
 					'<li class="phrase-list-title"><span data-bind="text: unknownKatakanaTitle"></span></li>' +
 					'<!-- ko foreach: unknownKatakana -->' +
 						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
@@ -246,20 +256,22 @@ ko.components.register("phrase-list-summary", {
 	viewModel: function (params) {
 		var me = this;
 		me.predictionTitle = "Phrases";
-		me.unknownPhraseTitle = "Unknown";
+		me.unknownPhraseTitle = "Unknown phrase";
+		me.unknownWordsTitle = "Unknown word";
 		me.unknownKatakanaTitle = "Katakana";
 
 		me.phraseList = params.dataModel.pl.phraseList;
 		me.unknownPhrase = params.dataModel.pl.unknownPhrase;
+		me.unknownWords = params.dataModel.pl.unknownWords;
 		me.unknownKatakana = params.dataModel.pl.unknownKatakana;
 	}
 });
 
 ko.components.register("phrase-item", {
 	template:
-		'<!-- ko foreach: words --><span data-bind="attr: { title:pos }, text:text"></span>/<!-- /ko -->'
-	,
-	viewModel: function (params) {
+		'<!-- ko foreach: words --><span data-bind="attr: { title: pos }, text:text"></span>/<!-- /ko --> (<span data-bind="text: count"></span>)'
+		,
+		viewModel: function (params) {
 		var me = this;
 		me.words = params.ph.w.map(x => {
 			return {
@@ -267,6 +279,7 @@ ko.components.register("phrase-item", {
 				text: x.split(",")[0]
 			};
 		});
+		me.count = params.ph.c;
 	}
 });
 

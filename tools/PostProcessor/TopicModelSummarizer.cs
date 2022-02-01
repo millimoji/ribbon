@@ -19,6 +19,7 @@ namespace Ribbon.PostProcessor
         public class TopicModelSummary
         {
             public double perplexity { get; set; }
+            public double minPerplexity { get; set; }
             public double latestPerplexity { get; set; }
             public double entropyAverage { get; set; }
             public double topicEntropy { get; set; }
@@ -43,8 +44,6 @@ namespace Ribbon.PostProcessor
         {
             var wordProbMatrix = topicModelHandler.wordProbsMatrix;
             var topicProbs = topicModelHandler.topicProbsArray;
-            var averagePerplexity = topicModelHandler.GetPerplexyAvarage();
-            var latestPerplexity = topicModelHandler.lastPerplexicity;
 
             if (wordProbMatrix.Count == 0)
             {
@@ -53,8 +52,11 @@ namespace Ribbon.PostProcessor
             var summary = new JsonType.SummaryStruct();
             summary.generatedTime = DateTime.Now.ToString();
             summary.summaryType = Constants.summaryTopicModel;
-            summary.tps.perplexity = Double.IsInfinity(averagePerplexity) || Double.IsNaN(averagePerplexity) ? 0.0 : averagePerplexity;
-            summary.tps.latestPerplexity = Double.IsInfinity(latestPerplexity) || Double.IsNaN(latestPerplexity) ? 0.0 : latestPerplexity;
+
+            var perplexities = topicModelHandler.loadedPerplexities;
+            summary.tps.perplexity = perplexities[0];
+            summary.tps.minPerplexity = perplexities[1];
+            summary.tps.latestPerplexity = perplexities[2];
 
             var log2 = Math.Log(2.0);
             var logTC = -Math.Log(1.0 / (double)topicProbs.Length) / log2;
