@@ -304,6 +304,8 @@ namespace Ribbon.Shared
             string dateText = DateTimeString();
             inputFilename = workingFolder + dateText + "-" + threadId + "-in.txt";
             outputFilename = workingFolder + dateText + "-" + threadId + "-out.txt";
+
+            this.SetupNormalizeData();
         }
 
         public string DateTimeString()
@@ -364,6 +366,7 @@ namespace Ribbon.Shared
 
         private List<List<string>> ReadOutputFile()
         {
+
             var result = new List<List<string>>();
 
             using (StreamReader mecabOutput = new StreamReader(outputFilename))
@@ -390,20 +393,56 @@ namespace Ribbon.Shared
                     }
                     string oneWord = WinApiBridge.Han2Zen(outPair[0]);
 
-#if false
-                    string[] properties = outPair[1].Split(',');
-                    foreach (string orgProp in properties)
+                    // normalizer
+                    if (this.normalizeTargetsRegex.IsMatch(oneWord))
                     {
-                        oneWord += "," + Strings.StrConv(orgProp, VbStrConv.Wide);
+                        foreach (var ch in oneWord)
+                        {
+                            building.Add(this.normalizedList[ch.ToString()]);
+                        }
                     }
-#else
-                    oneWord += "," + outPair[1];
-#endif
-                    building.Add(oneWord);
+                    else
+                    {
+                        oneWord += "," + outPair[1];
+                        building.Add(oneWord);
+                    }
                 }
             }
 
             return result;
+        }
+
+        private static string[] normalizeTargetList = new string[]
+        {
+            "・,記号,一般,*,*,*,*,・,・,・",
+            "：,記号,一般,*,*,*,*,：,：,：",
+            "．,記号,句点,*,*,*,*,．,．,．",
+            "，,記号,読点,*,*,*,*,，,，,，",
+            "　,記号,空白,*,*,*,*,　,　,　",
+            "（,記号,括弧開,*,*,*,*,（,（,（",
+            "）,記号,括弧閉,*,*,*,*,）,）,）",
+            "「,記号,括弧開,*,*,*,*,「,「,「",
+            "」,記号,括弧閉,*,*,*,*,」,」,」",
+            "［,記号,括弧開,*,*,*,*,［,［,［",
+            "］,記号,括弧閉,*,*,*,*,］,］,］",
+        };
+        private Dictionary<string, string> normalizedList;
+        private Regex normalizeTargetsRegex;
+
+        private void SetupNormalizeData()
+        {
+            if (this.normalizedList == null)
+            {
+                this.normalizedList = new Dictionary<string, string>();
+                var regexList = "";
+                foreach (var target in normalizeTargetList)
+                {
+                    var display = target.Split(new char[] { ',' })[0];
+                    regexList += display;
+                    this.normalizedList.Add(display, target);
+                }
+                this.normalizeTargetsRegex = new Regex("^[" + regexList + "]+$");
+            }
         }
     }
 
