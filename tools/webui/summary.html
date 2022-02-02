@@ -161,7 +161,8 @@ ko.components.register("root-node", {
 		me.onLoadTopicModel = function () { me.dataModel.reloadJson(me.dataModel.topicModelSummaryJson); };
 		me.onLoadMixUnigram = function () { me.dataModel.reloadJson(me.dataModel.mixUnigramSummaryJson); };
 		me.onLoadPhraseList = function () { me.dataModel.reloadJson(me.dataModel.phraseListSummaryJson); };
-		me.dataModel.reloadJson(me.dataModel.phraseListSummaryJson);
+
+		me.dataModel.reloadJson(me.dataModel.topicModelSummaryJson);
 	}
 });
 
