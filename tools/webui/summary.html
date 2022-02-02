@@ -88,9 +88,11 @@ function DataModel()
 	// phrase list data
 	me.pl = {
 		phraseList: ko.observableArray([]),
+		katakanaPhrase: ko.observableArray([]),
 		unknownPhrase: ko.observableArray([]),
 		unknownWords: ko.observableArray([]),
-		unknownKatakana: ko.observableArray([])
+		unknownKatakana: ko.observableArray([]),
+		unknownHiragana: ko.observableArray([])
 	};
 
 	me.reloadJson = (jsonUrl) => {
@@ -111,9 +113,11 @@ function DataModel()
 				me.dataModel(dataModel);
 				me.generatedTime(dataModel.generatedTime);
 				me.pl.phraseList(dataModel.phraseList);
+				me.pl.katakanaPhrase(dataModel.katakanaPhrase);
 				me.pl.unknownPhrase(dataModel.unknownPhrase);
 				me.pl.unknownWords(dataModel.unknownWords);
 				me.pl.unknownKatakana(dataModel.unknownKatakana);
+				me.pl.unknownHiragana(dataModel.unknownHiragana);
 			}
 		});
 	};
@@ -222,7 +226,7 @@ ko.components.register("phrase-list-summary", {
 		'<ul class="phrase-lsit-list">' +
 			'<li class="phrase-list-container">' +
 				'<ul class="phrase-list">' +
-					'<li class="phrase-list-title"><span data-bind="text: predictionTitle"></span></li>' +
+					'<li class="phrase-list-title"><span>Phrases</span></li>' +
 					'<!-- ko foreach: phraseList -->' +
 						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
 					'<!-- /ko -->' +
@@ -230,7 +234,15 @@ ko.components.register("phrase-list-summary", {
 			'</li>' +
 			'<li class="phrase-list-container">' +
 				'<ul class="phrase-list">' +
-					'<li class="phrase-list-title"><span data-bind="text: unknownPhraseTitle"></span></li>' +
+					'<li class="phrase-list-title"><span>Katakana phrases</span></li>' +
+					'<!-- ko foreach: katakanaPhrase -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span>Unknown phrases</span></li>' +
 					'<!-- ko foreach: unknownPhrase -->' +
 						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
 					'<!-- /ko -->' +
@@ -238,7 +250,7 @@ ko.components.register("phrase-list-summary", {
 			'</li>' +
 			'<li class="phrase-list-container">' +
 				'<ul class="phrase-list">' +
-					'<li class="phrase-list-title"><span data-bind="text: unknownWordsTitle"></span></li>' +
+					'<li class="phrase-list-title"><span>Unknown words</span></li>' +
 					'<!-- ko foreach: unknownWords -->' +
 						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
 					'<!-- /ko -->' +
@@ -246,8 +258,16 @@ ko.components.register("phrase-list-summary", {
 			'</li>' +
 			'<li class="phrase-list-container">' +
 				'<ul class="phrase-list">' +
-					'<li class="phrase-list-title"><span data-bind="text: unknownKatakanaTitle"></span></li>' +
+					'<li class="phrase-list-title"><span>Unknown Katakana</span></li>' +
 					'<!-- ko foreach: unknownKatakana -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span>Unknown Hiragana</span></li>' +
+					'<!-- ko foreach: unknownHiragana -->' +
 						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
 					'<!-- /ko -->' +
 				'</ul>' +
@@ -256,15 +276,12 @@ ko.components.register("phrase-list-summary", {
 	,
 	viewModel: function (params) {
 		var me = this;
-		me.predictionTitle = "Phrases";
-		me.unknownPhraseTitle = "Unknown phrase";
-		me.unknownWordsTitle = "Unknown word";
-		me.unknownKatakanaTitle = "Katakana";
-
 		me.phraseList = params.dataModel.pl.phraseList;
+		me.katakanaPhrase = params.dataModel.pl.katakanaPhrase;
 		me.unknownPhrase = params.dataModel.pl.unknownPhrase;
 		me.unknownWords = params.dataModel.pl.unknownWords;
 		me.unknownKatakana = params.dataModel.pl.unknownKatakana;
+		me.unknownHiragana = params.dataModel.pl.unknownHiragana;
 	}
 });
 

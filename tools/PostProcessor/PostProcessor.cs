@@ -20,19 +20,19 @@ namespace Ribbon.PostProcessor
             Shared.FileOperation.SlideDataFile(targetFiles, Constants.workingFolder);
 
             var nGramStore = new Shared.NGramStore(Constants.workingFolder);
-            nGramStore.LoadFromFile(1, 10);
+            var totalCounts = nGramStore.LoadFromFile(1, 10);
 
-            this.FindPhraseAndSave(nGramStore);
+            this.FindPhraseAndSave(nGramStore, totalCounts);
 
             this.SummarizeTopicModel(nGramStore);
 
             Shared.FileOperation.Upload();
         }
 
-        void FindPhraseAndSave(Shared.NGramStore nGramStore)
+        void FindPhraseAndSave(Shared.NGramStore nGramStore, long [] totalCounts)
         {
             var phraseFinder = new PhraseFinder();
-            phraseFinder.FindAndSave(Constants.workingFolder + Constants.phraseList, Constants.workingFolder + Constants.phraseListSummary, nGramStore);
+            phraseFinder.FindAndSave(Constants.workingFolder + Constants.phraseList, Constants.workingFolder + Constants.phraseListSummary, nGramStore, totalCounts);
         }
 
         void SummarizeTopicModel(Shared.NGramStore nGramStore)

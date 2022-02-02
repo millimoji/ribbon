@@ -9,6 +9,8 @@ namespace Ribbon
     class Constants
     {
         // constants
+        public const int maxNGram = 7;
+
         public const string mecabExe = "c:\\Program Files (x86)\\MeCab\\bin\\mecab.exe";
         public const string workingFolder = "c:\\lmworking\\";
         public const string ftpUploader = "..\\..\\..\\webui\\ftpupload.cmd";

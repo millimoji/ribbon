@@ -71,7 +71,7 @@ namespace Ribbon.Shared
         {
             FileOperation.SlideDataFile(this.fileNames, Constants.workingFolder);
 
-            for (int nGram = 1; nGram <= 7; ++nGram)
+            for (int nGram = 1; nGram <= Constants.maxNGram; ++nGram)
             {
                 var nGramHashMap = m_nGrams[nGram - 1];
 
@@ -97,8 +97,9 @@ namespace Ribbon.Shared
             m_mixUnigram.SaveToFile(m_workDir + Constants.mixUnigramlFileName, m_workDir + Constants.mixUnigramSummaryFilename, (int id) => this.WordList[id]);
         }
 
-        public void LoadFromFile(int divNum = 1, int cutOut = 0)
+        public long [] LoadFromFile(int divNum = 1, int cutOut = 0)
         {
+            var totalCounts = new long[Constants.maxNGram];
             if (File.Exists(m_workDir + doHalfFileName))
             {
                 divNum = 2;
@@ -120,10 +121,10 @@ namespace Ribbon.Shared
                 };
             //
 
-            for (int nGram = 1; nGram <= 7; ++nGram)
+            for (int nGram = 1; nGram <= Constants.maxNGram; ++nGram)
             {
                 var nGramHashMap = m_nGrams[nGram - 1];
-                int[] hashKeyList = new int[7];
+                int[] hashKeyList = new int[Constants.maxNGram];
 
                 string fileName = fileNames[nGram - 1];
                 try
@@ -138,17 +139,18 @@ namespace Ribbon.Shared
                             {
                                 long hashValue = 0;
                                 long.TryParse(nGramLine[nGram], out hashValue);
-                                if (cutOut > 0)
-                                {
-                                    if (hashValue < cutOut)
-                                    {
-                                        continue;
-                                    }
-                                }
                                 if (divNum > 0)
                                 {
                                     hashValue = hashValue / divNum;
                                     if (hashValue <= 0)
+                                    {
+                                        continue;
+                                    }
+                                }
+                                totalCounts[nGram - 1] += hashValue;
+                                if (cutOut > 0)
+                                {
+                                    if (hashValue < cutOut)
                                     {
                                         continue;
                                     }
@@ -179,6 +181,8 @@ namespace Ribbon.Shared
             this.m_mixUnigram.LoadFromFile(this.m_workDir + Constants.mixUnigramlFileName,
                 (string word) => this.WordToWordId(word, false),
                 (int id) => this.WordList[id]);
+
+            return totalCounts;
         }
 
         public void AddFromWordArray(List<string> arrayOfWord) // sentence
@@ -200,7 +204,7 @@ namespace Ribbon.Shared
 
             for (int i = 0; i < (arrayOfWord.Count + 2); ++i)
             {
-                var shiftKeyList = hashKeyList.Skip(i).Take(7).ToArray<int>();
+                var shiftKeyList = hashKeyList.Skip(i).Take(Constants.maxNGram).ToArray<int>();
                 int remained = arrayOfWord.Count - i + 2;
 
                 if (remained >= 7) { AddNgram(7, shiftKeyList, 1); }
@@ -432,7 +436,6 @@ namespace Ribbon.Shared
             "－,記号,一般,*,*,*,*,－,－,－", // minus
             "＆,記号,一般,*,*,*,*,＆,＆,＆",
             "／,記号,一般,*,*,*,*,／,／,／",
-            "〜,記号,一般,*,*,*,*,〜,〜,〜",
             "＃,記号,一般,*,*,*,*,＃,＃,＃",
             "│,記号,一般,*,*,*,*,│,│,│",
             "＿,記号,一般,*,*,*,*,＿,＿,＿", // underscore
