@@ -301,7 +301,9 @@ namespace Ribbon.Shared
             { "&lt;", "＜" },
             { "&copy;", "©" },
             { "&reg;", "®" },
-            { "&trade;", "™" }
+            { "&trade;", "™" },
+            { "&rarr;", "→" },
+            { "&hellip;", "…" },
         };
         Regex htmlSymbolMatch;
 
