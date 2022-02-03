@@ -212,13 +212,9 @@ namespace Ribbon.PostProcessor
 
         void CalcChildrenProbsdRecv(WordTreeItem parent)
         {
-            if (parent.children.Count == 0)
+            if (parent.children.Count <= 1)
             {
-                return;
-            }
-            if (parent.children.Count == 1)
-            {
-                parent.entropy = 0.0;
+                parent.entropy = 1.0 / Single.MaxValue; // do not touch to 0
             }
             else
             {
