@@ -26,6 +26,8 @@ namespace Ribbon.PostProcessor
         public List<Phrase> katakanaPhrase { get; set; }
         public List<Phrase> unknownKatakana { get; set; }
         public List<Phrase> unknownHiragana { get; set; }
+        public List<Phrase> unknownKanji { get; set; }
+        public List<Phrase> unknownOthers { get; set; }
     }
 
     class WordTreeItem
@@ -117,6 +119,18 @@ namespace Ribbon.PostProcessor
             phraseSummary.unknownHiragana = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.hasUnknownHiragana(phrase.w))
+                .Take(100)
+                .ToList();
+
+            phraseSummary.unknownKanji = sortedAllPhrases
+                //.Where(phrase => phrase.w.Length > 1)
+                .Where(phrase => this.hasUnknownKanji(phrase.w))
+                .Take(100)
+                .ToList();
+
+            phraseSummary.unknownOthers = sortedAllPhrases
+                //.Where(phrase => phrase.w.Length > 1)
+                .Where(phrase => this.hasUnknownOthers(phrase.w))
                 .Take(100)
                 .ToList();
 
@@ -286,8 +300,10 @@ namespace Ribbon.PostProcessor
         private static Regex lastRequiredType = new Regex(@",(\*|基本形),[^,]+,[^,]+,[^,]+$");
         private static Regex allKatakana = new Regex(@"^[ァ-ヶー]+,");
         private static Regex allHiragana = new Regex(@"^[ぁ-ゖー]+,");
-        private static Regex isNumber = new Regex(@",名詞,数,");
+        private static Regex isNumberPos = new Regex(@",名詞,数,");
+        private static Regex isNumber = new Regex(@"^[０-９]+,");
         private static Regex isAlphabet = new Regex(@"^[Ａ-Ｚａ-ｚ]+,");
+        private static Regex hasKanji = new Regex(@"^[\u2E80-\u2FDF々〻\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+,"); // \u20000-\u2FFFF ??
         // private static Regex isExcludingSymbols = new Regex(@"^[（）．，＆＃；－／％]+,");
 
         bool isAvailableAsPrediciton(string[] wordArray)
@@ -329,7 +345,7 @@ namespace Ribbon.PostProcessor
             {
                 return false;
             }
-            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumber.IsMatch(x) && !isAlphabet.IsMatch(x) /* && !isExcludingSymbols.IsMatch(x) */);
+            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumberPos.IsMatch(x) && !isAlphabet.IsMatch(x) /* && !isExcludingSymbols.IsMatch(x) */);
         }
 
         bool isAllKatakana(string [] wordArray)
@@ -360,5 +376,22 @@ namespace Ribbon.PostProcessor
             return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && allKatakana.IsMatch(x));
         }
 
+        bool hasUnknownKanji(string [] wordArray)
+        {
+            if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
+            {
+                return false;
+            }
+            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && hasKanji.IsMatch(x));
+        }
+
+        bool hasUnknownOthers(string[] wordArray)
+        {
+            if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
+            {
+                return false;
+            }
+            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumber.IsMatch(x) && !hasKanji.IsMatch(x) && !allHiragana.IsMatch(x) && !allKatakana.IsMatch(x));
+        }
     }
 }

@@ -141,7 +141,8 @@ namespace Ribbon.WebCrawler
                         }
                     }
                 }
-                Console.WriteLine("End: LoadWebAndAnalyze");
+                var nextSaveTime = this.lastSavedTime + (this.isEveryHourMode ? new TimeSpan(1, 0, 0) : new TimeSpan(saveInternvalHour, 0, 0));
+                Console.WriteLine($"End: LoadWebAndAnalyze, next save time: {nextSaveTime.Hour}");
                 return thisResult;
             });
         }
