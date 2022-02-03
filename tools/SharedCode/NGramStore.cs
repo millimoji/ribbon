@@ -293,10 +293,18 @@ namespace Ribbon.Shared
 
     public class MorphAnalyzer
     {
-        static Regex regexNbsp = new Regex("&nbsp;");
-        static Regex regexAmp = new Regex("&amp;");
-        static Regex regexGt = new Regex("&gt;");
-        static Regex regexLt = new Regex("&lt;");
+        static Dictionary<string, string> htmlSymbols = new Dictionary<string, string>()
+        {
+            { "&nbsp;", "　" },
+            { "&amp;", "＆" },
+            { "&gt;", "＞" },
+            { "&lt;", "＜" },
+            { "&copy;", "©" },
+            { "&reg;", "®" },
+            { "&trade;", "™" }
+        };
+        Regex htmlSymbolMatch;
+
         static Regex regexCharCode = new Regex(@"&#[0-9A-Fa-f]{1,4};");
 
         string inputFilename;
@@ -338,10 +346,12 @@ namespace Ribbon.Shared
             {
                 foreach (var text in srcText)
                 {
-                    var newText = regexNbsp.Replace(text, "　");
-                    newText = regexAmp.Replace(newText, "&");
-                    newText = regexGt.Replace(newText, ">");
-                    newText = regexLt.Replace(newText, "<");
+                    var newText = text;
+                    var symMatches = htmlSymbolMatch.Matches(newText);
+                    for (int i = symMatches.Count - 1; i >= 0; --i)
+                    {
+                        newText = newText.Substring(0, symMatches[i].Index) + htmlSymbols[symMatches[i].Value] + newText.Substring(symMatches[i].Index + symMatches[i].Length);
+                    }
 
                     var matches = regexCharCode.Matches(newText);
                     for (int i = matches.Count - 1; i >= 0; --i)
@@ -509,6 +519,11 @@ namespace Ribbon.Shared
 
         private void SetupNormalizeData()
         {
+            if (this.htmlSymbolMatch == null)
+            {
+                var regexLsit = String.Join("|", htmlSymbols.Select(kv => kv.Key).ToArray());
+                this.htmlSymbolMatch = new Regex("(" + regexLsit + ")");
+            }
             if (this.normalizeSymbolHash == null)
             {
                 this.normalizeSymbolHash = new Dictionary<string, string>();
