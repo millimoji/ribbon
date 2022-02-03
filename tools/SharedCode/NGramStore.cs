@@ -293,21 +293,7 @@ namespace Ribbon.Shared
 
     public class MorphAnalyzer
     {
-        static Dictionary<string, string> htmlSymbols = new Dictionary<string, string>()
-        {
-            { "&nbsp;", "　" },
-            { "&amp;", "＆" },
-            { "&gt;", "＞" },
-            { "&lt;", "＜" },
-            { "&copy;", "©" },
-            { "&reg;", "®" },
-            { "&trade;", "™" },
-            { "&rarr;", "→" },
-            { "&hellip;", "…" },
-        };
-        Regex htmlSymbolMatch;
-
-        static Regex regexCharCode = new Regex(@"&#[0-9A-Fa-f]{1,4};");
+        TextNormalizer normalizer = new TextNormalizer();
 
         string inputFilename;
         string outputFilename;
@@ -348,20 +334,7 @@ namespace Ribbon.Shared
             {
                 foreach (var text in srcText)
                 {
-                    var newText = text;
-                    var symMatches = htmlSymbolMatch.Matches(newText);
-                    for (int i = symMatches.Count - 1; i >= 0; --i)
-                    {
-                        newText = newText.Substring(0, symMatches[i].Index) + htmlSymbols[symMatches[i].Value] + newText.Substring(symMatches[i].Index + symMatches[i].Length);
-                    }
-
-                    var matches = regexCharCode.Matches(newText);
-                    for (int i = matches.Count - 1; i >= 0; --i)
-                    {
-                        var hexString = matches[i].Value.Substring(2, matches[i].Value.Length - 1 - 2);
-                        char character = (char)UInt32.Parse(hexString, System.Globalization.NumberStyles.HexNumber);
-                        newText = newText.Substring(0, matches[i].Index) + character + newText.Substring(matches[i].Index + matches[i].Length);
-                    }
+                    var newText = this.normalizer.NormalizeInput(text);
 
                     writeStream.WriteLine(newText);
                 }
@@ -521,11 +494,6 @@ namespace Ribbon.Shared
 
         private void SetupNormalizeData()
         {
-            if (this.htmlSymbolMatch == null)
-            {
-                var regexLsit = String.Join("|", htmlSymbols.Select(kv => kv.Key).ToArray());
-                this.htmlSymbolMatch = new Regex("(" + regexLsit + ")");
-            }
             if (this.normalizeSymbolHash == null)
             {
                 this.normalizeSymbolHash = new Dictionary<string, string>();
@@ -551,6 +519,65 @@ namespace Ribbon.Shared
                 this.normalizeTextRegex = new Regex("^(" + regexText + ")$");
             }
         }
+    }
+
+    class TextNormalizer
+    {
+        static Dictionary<string, Tuple<string, string>> inputNormalizeList = new Dictionary<string, Tuple<string, string>>()
+        {
+            { "charcode", new Tuple<string, string>(@"&#[0-9A-Fa-f]{1,4};", "1") },
+            { "a2", new Tuple<string, string>(@"&nbsp;", "\u3000") },
+            { "a3", new Tuple<string, string>(@"&amp;", "＆") },
+            { "a4", new Tuple<string, string>(@"&gt;", "＞") },
+            { "a5", new Tuple<string, string>(@"&lt;", "＜") },
+            { "a6", new Tuple<string, string>(@"&copy;", "©") },
+            { "a7", new Tuple<string, string>(@"&reg;", "®") },
+            { "a8", new Tuple<string, string>(@"&trade;", "™") },
+            { "a9", new Tuple<string, string>(@"&rarr;", "→") },
+            { "a10", new Tuple<string, string>(@"&hellip;", "…") },
+            { "a11", new Tuple<string, string>(@"[\u3000\u0020]+", "\u3000") },
+            { "a12", new Tuple<string, string>(@"ー+", "ー") },
+        };
+        Regex inputNormalizeRegex;
+
+        static Regex regexCharCode = new Regex(@"&#[0-9A-Fa-f]{1,4};");
+
+
+        public TextNormalizer()
+        {
+            var regexRule = String.Join("|", inputNormalizeList.Select(kv => $"(?<{kv.Key}>{kv.Value.Item1})").ToArray());
+            this.inputNormalizeRegex = new Regex(regexRule);
+        }
+
+        public string NormalizeInput(string source)
+        {
+            var result = source;
+            var listMatches = this.inputNormalizeRegex.Matches(result);
+            for (int i = listMatches.Count - 1; i >= 0; --i)
+            {
+                var matchItem = listMatches[i];
+                var replaceTo = "";
+                foreach (var kv in inputNormalizeList)
+                {
+                    if (matchItem.Groups[kv.Key].Success)
+                    {
+                        if (kv.Key == "charcode")
+                        {
+                            var hexString = matchItem.Value.Substring(2, matchItem.Value.Length - 1 - 2);
+                            replaceTo = ((char)UInt32.Parse(hexString, System.Globalization.NumberStyles.HexNumber)).ToString();
+                        }
+                        else
+                        {
+                            replaceTo = kv.Value.Item2;
+                        }
+                        result = result.Substring(0, matchItem.Index) + replaceTo + result.Substring(matchItem.Index + matchItem.Length);
+                        break;
+                    }
+                }
+            }
+            return result;
+        }
+
     }
 
 }
