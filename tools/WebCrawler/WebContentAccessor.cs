@@ -87,7 +87,7 @@ namespace Ribbon.WebCrawler
 
                     using (var httpContnt = httpResponse.Content)
                     {
-                        var meditaType = httpContnt.Headers.ContentType.MediaType;
+                        var meditaType = httpContnt.Headers.ContentType == null ? null : httpContnt.Headers.ContentType.MediaType;
                         if (meditaType == "text/html")
                         {
                             var contentLanguages = httpContnt.Headers.ContentLanguage;
@@ -236,6 +236,13 @@ namespace Ribbon.WebCrawler
                             if (nextUrl == currentUrl)
                             {
                                 continue;
+                            }
+                            var pathAndQuery = targetUri.PathAndQuery;
+                            if (pathAndQuery.Length == 0 || pathAndQuery == "/")
+                            {
+                                continue; // NOTE: ignore the URL that is root.
+                                // This logic is supporsed to collect variately pages. 
+                                // Usually root page has a tend to 'Welcome', so here is to suppress to collect top page.
                             }
 
                             if (BadWordFilter.CheckUrl(nextUrl) == BadWordFilter.OK_TEXT)

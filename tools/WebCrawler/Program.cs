@@ -41,7 +41,7 @@ namespace Ribbon.WebCrawler
             var targetUrls = m_dbAcccessor.PickupUrls(parallelDownload);
             if (targetUrls.Count == 0)
             {
-                targetUrls.Add("http://www.sankei.com/");
+                targetUrls.Add("https://www.sankei.com/");
             }
 
             DownloadTaskResult downloadResult = LoadWebAndAnalyze(targetUrls).GetAwaiter().GetResult();
@@ -53,13 +53,13 @@ namespace Ribbon.WebCrawler
 
                 if (targetUrls.Count == 0)
                 {
-                    targetUrls.Add("http://www.asahi.com/");
-                    targetUrls.Add("http://www.yomiuri.co.jp/");
+                    targetUrls.Add("https://www.asahi.com/");
+                    targetUrls.Add("https://www.yomiuri.co.jp/");
                     targetUrls.Add("https://mainichi.jp/");
-                    targetUrls.Add("http://www.nikkei.com/");
-                    targetUrls.Add("http://www.itmedia.co.jp/");
-                    targetUrls.Add("http://ascii.jp/");
-                    targetUrls.Add("http://www.atmarkit.co.jp/");
+                    targetUrls.Add("https://www.nikkei.com/");
+                    targetUrls.Add("https://www.itmedia.co.jp/");
+                    targetUrls.Add("https://ascii.jp/");
+                    targetUrls.Add("https://www.atmarkit.co.jp/");
                 }
 
                 var loadTask = LoadWebAndAnalyze(targetUrls);

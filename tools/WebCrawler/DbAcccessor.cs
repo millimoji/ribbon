@@ -285,7 +285,7 @@ namespace Ribbon.WebCrawler
             if (m_lastHostnameIndex < 0)
             {
                 var random = new System.Random();
-                m_lastHostnameIndex = random.Next(1, hostNames.Count - 1);
+                m_lastHostnameIndex = hostNames.Count <= 1 ? 0 : random.Next(1, hostNames.Count - 1);
             }
             else
             {
