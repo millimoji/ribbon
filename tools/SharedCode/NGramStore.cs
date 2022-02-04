@@ -534,14 +534,13 @@ namespace Ribbon.Shared
             { "a7", new Tuple<string, string>(@"&reg;", "®") },
             { "a8", new Tuple<string, string>(@"&trade;", "™") },
             { "a9", new Tuple<string, string>(@"&rarr;", "→") },
+            { "a14", new Tuple<string, string>(@"&quot;", "\"") },
             { "a10", new Tuple<string, string>(@"&hellip;", "…") },
             { "a11", new Tuple<string, string>(@"[\u3000\u0020]+", "\u3000") },
-            { "a12", new Tuple<string, string>(@"ー+", "ー") },
+            { "a12", new Tuple<string, string>(@"ーー+", "ー") },
+            { "a13", new Tuple<string, string>(@"ぺージ", "ページ") }, // Hiragana PE => Katakana
         };
         Regex inputNormalizeRegex;
-
-        static Regex regexCharCode = new Regex(@"&#[0-9A-Fa-f]{1,4};");
-
 
         public TextNormalizer()
         {
@@ -577,7 +576,6 @@ namespace Ribbon.Shared
             }
             return result;
         }
-
     }
 
 }
