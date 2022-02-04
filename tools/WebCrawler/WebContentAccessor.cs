@@ -84,21 +84,26 @@ namespace Ribbon.WebCrawler
                     {
                         return;
                     }
-/*
-                    var contentType = httpResponse.Headers.GetValues("Content-Type");
-                    if (!contentType.Any(x => x.StartsWith("text/html")))
+
+                    using (var httpContnt = httpResponse.Content)
                     {
-                        return;
-                    }
-*/
-                    using (var streamData = httpResponse.Content.ReadAsStreamAsync().Result)
-                    {
-                        using (StreamReader reader = new StreamReader(streamData))
+                        var meditaType = httpContnt.Headers.ContentType.MediaType;
+                        if (meditaType == "text/html")
                         {
-                            m_htmlDoc.LoadHtml(reader.ReadToEnd());
-                            reader.Close();
+                            var contentLanguages = httpContnt.Headers.ContentLanguage;
+                            if (contentLanguages.Count == 0 || contentLanguages.Any(x => x.StartsWith("ja")))
+                            {
+                                using (var streamData = httpContnt.ReadAsStreamAsync().Result)
+                                {
+                                    using (StreamReader reader = new StreamReader(streamData))
+                                    {
+                                        m_htmlDoc.LoadHtml(reader.ReadToEnd());
+                                        reader.Close();
+                                    }
+                                    streamData.Close();
+                                }
+                            }
                         }
-                        streamData.Close();
                     }
                 }
                 Succeeded = true;
@@ -168,9 +173,8 @@ namespace Ribbon.WebCrawler
             {
                 textSet.ToList().ForEach(t =>
                 {
-                    String[] textBreaker = new String[] { "__Break__Break__" };
-
-                    var textList = Regex.Replace(t, "([。｡!！?？]+)[　]*", "$1__Break__Break__", RegexOptions.Singleline).Split(textBreaker, StringSplitOptions.RemoveEmptyEntries);
+                    var textList = sentenceBreakFinder.Replace(t, "$1" + textBreakMarker)
+                        .Split(this.textBreakMarkerArray, StringSplitOptions.RemoveEmptyEntries);
 
                     textList.ToList().ForEach(x =>
                     {
@@ -179,6 +183,10 @@ namespace Ribbon.WebCrawler
                 });
             }
         }
+
+        private static string textBreakMarker = "__Break__Break__";
+        private String[] textBreakMarkerArray = new String[] { textBreakMarker };
+        private Regex sentenceBreakFinder = new Regex(@"([。｡!！?？]+)[　]*", RegexOptions.Singleline);
 
         private void RetrieveAnchorUrls()
         {
