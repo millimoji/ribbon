@@ -15,7 +15,7 @@ namespace Ribbon.PostProcessor
             // test code
             var normalizer = new Shared.TextNormalizer();
 
-            var src = "abc&nbsp;def&lt;ghi&#3001;jkl　 　 mnoーーーーーーpqr";
+            var src = "採/⽤/する";
 
             var result = normalizer.NormalizeInput(src);
 

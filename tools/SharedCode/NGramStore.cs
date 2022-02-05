@@ -523,19 +523,11 @@ namespace Ribbon.Shared
 
     class TextNormalizer
     {
+        Regex simpleMapping;
+
         static Dictionary<string, Tuple<string, string>> inputNormalizeList = new Dictionary<string, Tuple<string, string>>()
         {
             { "charcode", new Tuple<string, string>(@"&#[0-9A-Fa-f]{1,4};", "1") },
-            { "a2", new Tuple<string, string>(@"&nbsp;", "\u3000") },
-            { "a3", new Tuple<string, string>(@"&amp;", "＆") },
-            { "a4", new Tuple<string, string>(@"&gt;", "＞") },
-            { "a5", new Tuple<string, string>(@"&lt;", "＜") },
-            { "a6", new Tuple<string, string>(@"&copy;", "©") },
-            { "a7", new Tuple<string, string>(@"&reg;", "®") },
-            { "a8", new Tuple<string, string>(@"&trade;", "™") },
-            { "a9", new Tuple<string, string>(@"&rarr;", "→") },
-            { "a14", new Tuple<string, string>(@"&quot;", "\"") },
-            { "a10", new Tuple<string, string>(@"&hellip;", "…") },
             { "a11", new Tuple<string, string>(@"[\u3000\u0020]+", "\u3000") },
             { "a12", new Tuple<string, string>(@"ーー+", "ー") },
             { "a13", new Tuple<string, string>(@"ぺージ", "ページ") }, // Hiragana PE => Katakana
@@ -544,6 +536,9 @@ namespace Ribbon.Shared
 
         public TextNormalizer()
         {
+            var simpleRule = String.Join("|", simpleMappingList.Select(kv => kv.Key).ToArray());
+            this.simpleMapping = new Regex(simpleRule);
+
             var regexRule = String.Join("|", inputNormalizeList.Select(kv => $"(?<{kv.Key}>{kv.Value.Item1})").ToArray());
             this.inputNormalizeRegex = new Regex(regexRule);
         }
@@ -551,31 +546,353 @@ namespace Ribbon.Shared
         public string NormalizeInput(string source)
         {
             var result = source;
-            var listMatches = this.inputNormalizeRegex.Matches(result);
-            for (int i = listMatches.Count - 1; i >= 0; --i)
+            // simple replacement rule
             {
-                var matchItem = listMatches[i];
-                var replaceTo = "";
-                foreach (var kv in inputNormalizeList)
+                var listMatches = this.simpleMapping.Matches(result);
+                for (int i = listMatches.Count - 1; i >= 0; --i)
                 {
-                    if (matchItem.Groups[kv.Key].Success)
+                    var matchItem = listMatches[i];
+                    var replaceTo = simpleMappingList[matchItem.Value];
+                    result = result.Substring(0, matchItem.Index) + replaceTo + result.Substring(matchItem.Index + matchItem.Length);
+                }
+            }
+            // complex
+            {
+                var listMatches = this.inputNormalizeRegex.Matches(result);
+                for (int i = listMatches.Count - 1; i >= 0; --i)
+                {
+                    var matchItem = listMatches[i];
+                    var replaceTo = "";
+                    foreach (var kv in inputNormalizeList)
                     {
-                        if (kv.Key == "charcode")
+                        if (matchItem.Groups[kv.Key].Success)
                         {
-                            var hexString = matchItem.Value.Substring(2, matchItem.Value.Length - 1 - 2);
-                            replaceTo = ((char)UInt32.Parse(hexString, System.Globalization.NumberStyles.HexNumber)).ToString();
+                            if (kv.Key == "charcode")
+                            {
+                                var hexString = matchItem.Value.Substring(2, matchItem.Value.Length - 1 - 2);
+                                replaceTo = ((char)UInt32.Parse(hexString, System.Globalization.NumberStyles.HexNumber)).ToString();
+                            }
+                            else
+                            {
+                                replaceTo = kv.Value.Item2;
+                            }
+                            result = result.Substring(0, matchItem.Index) + replaceTo + result.Substring(matchItem.Index + matchItem.Length);
+                            break;
                         }
-                        else
-                        {
-                            replaceTo = kv.Value.Item2;
-                        }
-                        result = result.Substring(0, matchItem.Index) + replaceTo + result.Substring(matchItem.Index + matchItem.Length);
-                        break;
                     }
                 }
             }
             return result;
         }
-    }
 
+        static Dictionary<string, string> simpleMappingList = new Dictionary<string, string>()
+        {
+            // HTML espace
+            { "&nbsp;", "\u3000" },
+            { "&amp;", "＆" },
+            { "&gt;", "＞" },
+            { "&lt;", "＜" },
+            { "&copy;", "©" },
+            { "&reg;", "®" },
+            { "&trade;", "™" },
+            { "&rarr;", "→" },
+            { "&quot;", "\"" },
+            { "&hellip;", "…" },
+            // Wrong?
+            { "デ", "デ" },
+            // 康熙字典部首 KANGXI RADICAL
+            // 【1画】
+            { "⼀" /* &#x2F00; */, "一" /* &#x4E00; */ },			// いち	ONE
+            { "⼁" /* &#x2F01; */, "丨" /* &#x4E28; */ },			// ぼう、たてぼう	LINE
+            { "⼂" /* &#x2F02; */, "丶" /* &#x4E36; */ },			// てん	DOT
+            { "⼃" /* &#x2F03; */, "丿" /* &#x4E3F; */ },			// の、はらいぼう	SLASH
+            { "⼄" /* &#x2F04; */, "乙" /* &#x4E59; */ },			// おつ	SECOND
+            { "乚" /* &#x2E83; */, "乚" /* &#x4E5A; */ },			// つりばり	(CJK) SECOND TWO
+            { "⼅" /* &#x2F05; */, "亅" /* &#x4E85; */ },			// はねぼう	HOOK
+            //【2画】
+            { "⼆" /* &#x2F06; */, "二" /* &#x4E8C; */ },			// に	TWO
+            { "⼇" /* &#x2F07; */, "亠" /* &#x4EA0; */ },			// なべぶた	LID
+            { "⼈" /* &#x2F08; */, "人" /* &#x4EBA; */ },			// ひと	MAN
+            // { "𠆢" /* &#x201A2, */, "人" /* &#x4EBA; */ },			// ひとやね、ひとがしら	Unicode U+201A2
+            { "亻" /* &#x2E85; */, "亻" /* &#x4EBB; */ },			// にんべん	(CJK) PERSON
+            { "⼉" /* &#x2F09; */, "儿" /* &#x513F; */ },			// ひとあし、にんにょう	LEGS
+            { "⼊" /* &#x2F0A; */, "入" /* &#x5165; */ },			// いる、いりがしら	ENTER
+            { "⼋" /* &#x2F0B; */, "八" /* &#x516B; */ },			// はち、はちがしら	EIGHT
+            { "⼌" /* &#x2F0C; */, "冂" /* &#x5182; */ },			// どうがまえ、けいがまえ	DOWN BOX
+            { "⼍" /* &#x2F0D; */, "冖" /* &#x5196; */ },			// わかんむり	COVER
+            { "⼎" /* &#x2F0E; */, "冫" /* &#x51AB; */ },			// にすい	ICE
+            { "⼏" /* &#x2F0F; */, "几" /* &#x51E0; */ },			// つくえ	TABLE
+            { "⺇" /* &#x2E87; */, "几" /* &#x51E0; */ },			// かぜかんむり、かぜがまえ	(CJK) TABLE
+            { "⼐" /* &#x2F10; */, "凵" /* &#x51F5; */ },			// かんにょう、うけばこ	OPEN BOX
+            { "⼑" /* &#x2F11; */, "刀" /* &#x5200; */ },			// かたな	KNIFE
+            { "刂" /* &#x2E89; */, "刂" /* &#x5202; */ },			// りっとう	(CJK) KNIFE TWO
+            { "⼒" /* &#x2F12; */, "力" /* &#x529B; */ },			// ちから	POWER
+            { "⼓" /* &#x2F13; */, "勹" /* &#x52F9; */ },			// つつみがまえ	WRAP
+            { "⼔" /* &#x2F14; */, "匕" /* &#x5315; */ },			// ひ、さじ	SPOON
+            { "⼕" /* &#x2F15; */, "匚" /* &#x531A; */ },			// はこがまえ	RIGHT OPEN BOX
+            { "⼖" /* &#x2F16; */, "匸" /* &#x5338; */ },			// かくしがまえ	HIDING ENCLOSURE
+            { "⼗" /* &#x2F17; */, "十" /* &#x5341; */ },			// じゅう	TEN
+            { "⼘" /* &#x2F18; */, "卜" /* &#x535C; */ },			// ぼくのと	DIVINATION
+            { "⼙" /* &#x2F19; */, "卩" /* &#x5369; */ },			// ふしづくり	SEAL
+            { "⺋" /* &#x2E8B; */, "㔾" /* &#x353E; */ },			// まげわりふ	(CJK) SEAL
+            { "⼚" /* &#x2F1A; */, "厂" /* &#x5382; */ },			// がんだれ	CLIFF
+            { "⼛" /* &#x2F1B; */, "厶" /* &#x53B6; */ },			// む	PRIVATE
+            { "⼜" /* &#x2F1C; */, "又" /* &#x53C8; */ },			// また	AGAIN
+            // 【3画】					
+            { "⼝" /* &#x2F1D; */, "口" /* &#x53E3; */ },			// くち、くちへん	MOUTH
+            { "⼞" /* &#x2F1E; */, "囗" /* &#x56D7; */ },			// くにがまえ	ENCLOSURE
+            { "⼟" /* &#x2F1F; */, "土" /* &#x571F; */ },			// つち、つちへん	EARTH
+            { "⼠" /* &#x2F20; */, "士" /* &#x58EB; */ },			// さむらい	SCHOLAR
+            { "⼡" /* &#x2F21; */, "夂" /* &#x5902; */ },			// ふゆがしら	GO
+            { "⼢" /* &#x2F22; */, "夊" /* &#x590A; */ },			// なつあし	GO SLOWLY
+            { "⼣" /* &#x2F23; */, "夕" /* &#x5915; */ },			// ゆう、ゆうべ	EVENING
+            { "⼤" /* &#x2F24; */, "大" /* &#x5927; */ },			// だい	BIG
+            { "⼥" /* &#x2F25; */, "女" /* &#x5973; */ },			// おんな、おんなへん	WOMAN
+            { "⼦" /* &#x2F26; */, "子" /* &#x5B50; */ },			// こ、こへん	CHILD
+            { "⼧" /* &#x2F27; */, "宀" /* &#x5B80; */ },			// うかんむり	ROOF
+            { "⼨" /* &#x2F28; */, "寸" /* &#x5BF8; */ },			// すん	INCH
+            { "⼩" /* &#x2F29; */, "小" /* &#x5C0F; */ },			// しょう	SMALL
+            { "⺌" /* &#x2E8C; */, "小" /* &#x5C0F; */ },			// しょうがしら	(CJK) SMALL ONE
+            { "⺍" /* &#x2E8D; */, "小" /* &#x5C0F; */ },			// つかんむり	(CJK) SMALL TWO
+            { "⼪" /* &#x2F2A; */, "尢" /* &#x5C22; */ },			// だいのまげあし	LAME
+            { "⼫" /* &#x2F2B; */, "尸" /* &#x5C38; */ },			// しかばね	CORPSE
+            { "⼬" /* &#x2F2C; */, "屮" /* &#x5C6E; */ },			// てつ、くさのめ	SPROUT
+            { "⼭" /* &#x2F2D; */, "山" /* &#x5C71; */ },			// やま、やまへん	MOUNTAIN
+            { "⼮" /* &#x2F2E; */, "巛" /* &#x5DDB; */ },			// かわ	RIVER
+            { "⼯" /* &#x2F2F; */, "工" /* &#x5DE5; */ },			// こう、たくみへん	WORK
+            { "⼰" /* &#x2F30; */, "己" /* &#x5DF1; */ },			// おのれ	ONESELF
+            { "⼱" /* &#x2F31; */, "巾" /* &#x5DFE; */ },			// はば、はばへん	TURBAN
+            { "⼲" /* &#x2F32; */, "干" /* &#x5E72; */ },			// かん、いちじゅう	DRY
+            { "⼳" /* &#x2F33; */, "幺" /* &#x5E7A; */ },			// いとがしら	SHORT THREAD
+            { "⼴" /* &#x2F34; */, "广" /* &#x5E7F; */ },			// まだれ	DOTTED CLIFF
+            { "⼵" /* &#x2F35; */, "廴" /* &#x5EF4; */ },			// えんにょう	LONG STRIDE
+            { "⼶" /* &#x2F36; */, "廾" /* &#x5EFE; */ },			// にじゅうあし、こまぬき	TWO HANDS
+            { "⼷" /* &#x2F37; */, "弋" /* &#x5F0B; */ },			// しきがまえ、よく	SHOOT
+            { "⼸" /* &#x2F38; */, "弓" /* &#x5F13; */ },			// ゆみへん	BOW
+            { "⼹" /* &#x2F39; */, "彐" /* &#x5F50; */ },			// けいがしら	SNOUT
+            { "彑" /* &#x2E94; */, "彑" /* &#x5F51; */ },			// けいがしら	(CJK) SNOUT ONE
+            { "⺕" /* &#x2E95; */, "彐" /* &#x5F50; */ },			// けいがしら	(CJK) SNOUT TWO
+            { "⼺" /* &#x2F3A; */, "彡" /* &#x5F61; */ },			// さんづくり	BRISTLE
+            { "⼻" /* &#x2F3B; */, "彳" /* &#x5F73; */ },			// ぎょうにんべん	STEP
+            { "艹" /* &#x2EBE; */, "艹" /* &#x8279; */ },			// くさかんむり	(CJK) GRASS ONE
+            { "⻌" /* &#x2ECC; */, "辶" /* &#x8FB6; */ },			// (1点)しんにょう、しんにゅう	(CJK) SIMPLIFIED WALK
+            { "⻖" /* &#x2ED6; */, "阝" /* &#x961D; */ },			// おおざと	(CJK) MOUND TWO
+            //{ "⻖" /* &#x2ED6; */, "阝" /* &#x961D; */ },			// こざと、こざとへん	(CJK) MOUND TWO
+            { "忄" /* &#x2E96; */, "忄" /* &#x5FC4; */ },			// りっしんべん	(CJK) HEART ONE
+            { "扌" /* &#x2E98; */, "扌" /* &#x624C; */ },			// てへん	(CJK) HAND
+            { "氵" /* &#x2EA1; */, "氵" /* &#x6C35; */ },			// さんずい	(CJK) WATER ONE
+            { "犭" /* &#x2EA8; */, "犭" /* &#x72AD; */ },			// けものへん	(CJK) DOG
+            { "⺦" /* &#x2EA6; */, "丬" /* &#x4E2C; */ },			// しょうへん	(CJK) SIMPLIFIED HALF TREE TRUNK
+            // 【4画】
+            { "⼼" /* &#x2F3C; */, "心" /* &#x5FC3; */ },			// こころ	HEART
+            { "⺗" /* &#x2E97; */, "心" /* &#x5FC3; */ },			// したごころ	(CJK) HEART TWO
+            { "⼽" /* &#x2F3D; */, "戈" /* &#x6208; */ },			// ほこづくり、ほこがまえ	HALBERD
+            { "⼾" /* &#x2F3E; */, "戶" /* &#x6236; */ },			// と、とかんむり、とだれ	DOOR
+            { "⼿" /* &#x2F3F; */, "手" /* &#x624B; */ },			// て	HAND
+            { "⽀" /* &#x2F40; */, "支" /* &#x652F; */ },			// し、しにょう	BRANCH
+            { "⽁" /* &#x2F41; */, "攴" /* &#x6534; */ },			// ぼくづくり、とまた	RAP
+            { "⺙" /* &#x2E99; */, "攵" /* &#x6535; */ },			// のぶん	(CJK) RAP
+            { "⽂" /* &#x2F42; */, "文" /* &#x6587; */ },			// ぶん	SCRIPT
+            { "⽃" /* &#x2F43; */, "斗" /* &#x6597; */ },			// とます、と	DIPPER
+            { "⽄" /* &#x2F44; */, "斤" /* &#x65A4; */ },			// おの、きん	AXE
+            { "⽅" /* &#x2F45; */, "方" /* &#x65B9; */ },			// ほう、かたへん	SQUARE
+            { "⽆" /* &#x2F46; */, "无" /* &#x65E0; */ },			// なし、むにょう	NOT
+            { "⺛" /* &#x2E9B; */, "旡" /* &#x65E1; */ },			// すでのつくり	(CJK) CHOKE
+            { "⽇" /* &#x2F47; */, "日" /* &#x65E5; */ },			// ひ、ひへん	SUN
+            { "⽈" /* &#x2F48; */, "曰" /* &#x66F0; */ },			// ひらび、いわく	SAY
+            { "⽉" /* &#x2F49; */, "月" /* &#x6708; */ },			// つき、つきへん	MOON
+            { "⺼" /* &#x2EBC; */, "肉" /* &#x8089; */ },			// にくづき	(CJK) MEAT
+            { "⽊" /* &#x2F4A; */, "木" /* &#x6728; */ },			// き、きへん	TREE
+            { "⽋" /* &#x2F4B; */, "欠" /* &#x6B20; */ },			// あくび、けんづくり	LACK
+            { "⽌" /* &#x2F4C; */, "止" /* &#x6B62; */ },			// とめる、とめへん	STOP
+            { "⽍" /* &#x2F4D; */, "歹" /* &#x6B79; */ },			// がつへん、かばねへん、いちたへん	DEATH
+            { "歺" /* &#x2E9E; */, "歺" /* &#x6B7A; */ },			// がつへん、かばねへん、いちたへん	(CJK) DEATH
+            { "⽎" /* &#x2F4E; */, "殳" /* &#x6BB3; */ },			// るまた、ほこづくり	WEAPON
+            { "⽏" /* &#x2F4F; */, "毋" /* &#x6BCB; */ },			// なかれ	DO NOT
+            { "⽐" /* &#x2F50; */, "比" /* &#x6BD4; */ },			// ならびひ、くらべる	COMPARE
+            { "⽑" /* &#x2F51; */, "毛" /* &#x6BDB; */ },			// け	FUR
+            { "⽒" /* &#x2F52; */, "氏" /* &#x6C0F; */ },			// うじ	CLAN
+            { "⽓" /* &#x2F53; */, "气" /* &#x6C14; */ },			// きがまえ	STEAM
+            { "⽔" /* &#x2F54; */, "水" /* &#x6C34; */ },			// みず	WATER
+            { "⽕" /* &#x2F55; */, "火" /* &#x706B; */ },			// ひ、ひへん	FIRE
+            { "⺣" /* &#x2EA3; */, "灬" /* &#x706C; */ },			// れっか	(CJK) FIRE
+            { "⽖" /* &#x2F56; */, "爪" /* &#x722A; */ },			// つめ	CLAW
+            { "⺤" /* &#x2EA4; */, "爫" /* &#x722B; */ },			// つめかんむり	(CJK) PAW ONE
+            { "⺥" /* &#x2EA5; */, "爫" /* &#x722B; */ },			// つめかんむり	(CJK) PAW TWO
+            { "⽗" /* &#x2F57; */, "父" /* &#x7236; */ },			// ちち	FATHER
+            { "⽘" /* &#x2F58; */, "爻" /* &#x723B; */ },			// こう、めめ	DOUBLE X
+            { "⽙" /* &#x2F59; */, "爿" /* &#x723F; */ },			// しょうへん	HALF TREE TRUNK
+            { "⽚" /* &#x2F5A; */, "片" /* &#x7247; */ },			// かた、かたへん	SLICE
+            { "⽛" /* &#x2F5B; */, "牙" /* &#x7259; */ },			// きば、きばへん	FANG
+            { "⽜" /* &#x2F5C; */, "牛" /* &#x725B; */ },			// うし、うしへん	COW
+            { "牜" /* &#x725C; */, "牛" /* &#x725B; */ },			// うし、うしへん	OX,COW
+            { "⽝" /* &#x2F5D; */, "犬" /* &#x72AC; */ },			// いぬ	DOG
+            { "⻀" /* &#x2EC0; */, "艹" /* &#x8279; */ },			// くさかんむり	(CJK) GRASS THREE
+            { "⻍" /* &#x2ECD; */, "辶" /* &#x8FB6; */ },			// (2点)しんにょう、しんにゅう	(CJK) WALK ONE
+            { "⻎" /* &#x2ECE; */, "辶" /* &#x8FB6; */ },			// しんにょう、しんにゅう	(CJK) WALK TWO
+            { "⺩" /* &#x2EA9; */, "王" /* &#x738B; */ },			// おう、おうへん	(CJK) JADE
+            { "礻" /* &#x2EAD; */, "礻" /* &#x793B; */ },			// しめすへん、ねへん	(CJK) SPIRIT TWO
+            { "耂" /* &#x2EB9; */, "耂" /* &#x8002; */ },			// おいかんむり	(CJK) OLD
+            { "⺱" /* &#x2EB1; */, "罓" /* &#x7F53; */ },			// あみがしら	(CJK) NET ONE
+            { "⺳" /* &#x2EB3; */, "网" /* &#x7F51; */ },			// あみがしら	(CJK) NET THREE
+            //【5画】
+            { "⽞" /* &#x2F5E; */, "玄" /* &#x7384; */ },			// げん	PROFOUND
+            { "⽟" /* &#x2F5F; */, "玉" /* &#x7389; */ },			// たま、おう、おうへん	JADE
+            { "⽠" /* &#x2F60; */, "瓜" /* &#x74DC; */ },			// うり	MELON
+            { "⽡" /* &#x2F61; */, "瓦" /* &#x74E6; */ },			// かわら	TILE
+            { "⽢" /* &#x2F62; */, "甘" /* &#x7518; */ },			// かん、あまい	SWEET
+            { "⽣" /* &#x2F63; */, "生" /* &#x751F; */ },			// うまれる	LIFE
+            { "⽤" /* &#x2F64; */, "用" /* &#x7528; */ },			// もちいる	USE
+            { "⽥" /* &#x2F65; */, "田" /* &#x7530; */ },			// た、たへん	FIELD
+            { "⽦" /* &#x2F66; */, "疋" /* &#x758B; */ },			// ひき、ひきへん	BOLT OF CLOTH
+            { "𤴔" /* &#x2EAA; */, "疋" /* &#x758B; */ },			// ひき、ひきへん	(CJK) BOLT OF CLOTH
+            { "⽧" /* &#x2F67; */, "疒" /* &#x7592; */ },			// やまいだれ	SICKNESS
+            { "⽨" /* &#x2F68; */, "癶" /* &#x7676; */ },			// はつがしら	DOTTED TENT
+            { "⽩" /* &#x2F69; */, "白" /* &#x767D; */ },			// しろ	WHITE
+            { "⽪" /* &#x2F6A; */, "皮" /* &#x76AE; */ },			// けがわ	SKIN
+            { "⽫" /* &#x2F6B; */, "皿" /* &#x76BF; */ },			// さら	DISH
+            { "⽬" /* &#x2F6C; */, "目" /* &#x76EE; */ },			// め、めへん	EYE
+            { "⽭" /* &#x2F6D; */, "矛" /* &#x77DB; */ },			// ほこ、ほこへん	SPEAR
+            { "⽮" /* &#x2F6E; */, "矢" /* &#x77E2; */ },			// や、やへん	ARROW
+            { "⽯" /* &#x2F6F; */, "石" /* &#x77F3; */ },			// いし、いしへん	STONE
+            { "⽰" /* &#x2F70; */, "示" /* &#x793A; */ },			// しめす	SPIRIT
+            { "⽱" /* &#x2F71; */, "禸" /* &#x79B8; */ },			// ぐうのあし	TRACK
+            { "⽲" /* &#x2F72; */, "禾" /* &#x79BE; */ },			// のぎ、のぎへん	GRAIN
+            { "⽳" /* &#x2F73; */, "穴" /* &#x7A74; */ },			// あな、あなかんむり	CAVE
+            { "⽴" /* &#x2F74; */, "立" /* &#x7ACB; */ },			// たつ、たつへん	STAND
+            { "⺫" /* &#x2EAB; */, "罒" /* &#x7F52; */ },			// あみがしら、あみめ	(CJK) NET TWO
+            { "⺲" /* &#x2EB2; */, "目" /* &#x76EE; */ },			// よこめ、よんがしら	(CJK) EYE
+            { "⺟" /* &#x2E9F; */, "母" /* &#x6BCD; */ },			// はは	(CJK) MOTHER
+            { "⻂" /* &#x2EC2; */, "衤" /* &#x8864; */ },			// ころもへん	(CJK) CLOTHES
+            { "⺢" /* &#x2EA2; */, "氺" /* &#x6C3A; */ },			// したみず	(CJK) WATER TWO
+            //【6画】					
+            { "⽵" /* &#x2F75; */, "竹" /* &#x7AF9; */ },			// たけ、たけかんむり	BAMBOO
+            { "⺮" /* &#x2EAE; */, "竹" /* &#x7AF9; */ },			// たけかんむり	(CJK) BAMBOO
+            { "⽶" /* &#x2F76; */, "米" /* &#x7C73; */ },			// こめ、こめへん	RICE
+            { "⽷" /* &#x2F77; */, "糸" /* &#x7CF8; */ },			// いと、いとへん	SILK
+            { "⽸" /* &#x2F78; */, "缶" /* &#x7F36; */ },			// かん、ほとぎ	JAR
+            { "⽹" /* &#x2F79; */, "网" /* &#x7F51; */ },			// あみ、あみがしら	NET
+            { "⽺" /* &#x2F7A; */, "羊" /* &#x7F8A; */ },			// ひつじ	SHEEP
+            { "⺷" /* &#x2EB6; */, "羊" /* &#x7F8A; */ },			// ひつじ	(CJK) SHEEP
+            { "⺶" /* &#x2EB7; */, "羊" /* &#x7F8A; */ },			// ひつじ	(CJK) RAM
+            { "⽻" /* &#x2F7B; */, "羽" /* &#x7FBD; */ },			// はね	FEATHER
+            { "⽼" /* &#x2F7C; */, "老" /* &#x8001; */ },			// おい、おいがしら	OLD
+            { "⽽" /* &#x2F7D; */, "而" /* &#x800C; */ },			// しこうして	AND
+            { "⽾" /* &#x2F7E; */, "耒" /* &#x8012; */ },			// すきへん	PLOW
+            { "⽿" /* &#x2F7F; */, "耳" /* &#x8033; */ },			// みみ、みみへん	EAR
+            { "⾀" /* &#x2F80; */, "聿" /* &#x807F; */ },			// ふでづくり	BRUSH
+            { "⾁" /* &#x2F81; */, "肉" /* &#x8089; */ },			// にく	MEAT
+            { "⾂" /* &#x2F82; */, "臣" /* &#x81E3; */ },			// しん	MINISTER
+            { "⾃" /* &#x2F83; */, "自" /* &#x81EA; */ },			// みずから	SELF
+            { "⾄" /* &#x2F84; */, "至" /* &#x81F3; */ },			// いたる	ARRIVE
+            { "⾅" /* &#x2F85; */, "臼" /* &#x81FC; */ },			// うす	MORTAR
+            { "⾆" /* &#x2F86; */, "舌" /* &#x820C; */ },			// した	TONGUE
+            { "⾇" /* &#x2F87; */, "舛" /* &#x821B; */ },			// ます	OPPOSE
+            { "⾈" /* &#x2F88; */, "舟" /* &#x821F; */ },			// ふね、ふねへん	BOAT
+            { "⾉" /* &#x2F89; */, "艮" /* &#x826E; */ },			// こんづくり、うしとら	STOPPING
+            { "⾊" /* &#x2F8A; */, "色" /* &#x8272; */ },			// いろ	COLOR
+            { "⾋" /* &#x2F8B; */, "艸" /* &#x8278; */ },			// くさ、くさかんむり	GRASS
+            { "⾌" /* &#x2F8C; */, "虍" /* &#x864D; */ },			// とらがしら、とらかんむり	TIGER
+            { "⾍" /* &#x2F8D; */, "虫" /* &#x866B; */ },			// むし、むしへん	INSECT
+            { "⾎" /* &#x2F8E; */, "血" /* &#x8840; */ },			// ち	BLOOD
+            { "⾏" /* &#x2F8F; */, "行" /* &#x884C; */ },			// ぎょう、ぎょうがまえ	WALK ENCLOSURE
+            { "⾐" /* &#x2F90; */, "衣" /* &#x8863; */ },			// ころも	CLOTHES
+            { "⾑" /* &#x2F91; */, "襾" /* &#x897E; */ },			// にし、にしかんむり	WEST
+            { "⻃" /* &#x2EC3; */, "覀" /* &#x8980; */ },			// にし、にしかんむり	(CJK) WEST ONE
+            { "⻄" /* &#x2EC4; */, "西" /* &#x897F; */ },			// にし、にしかんむり	(CJK) WEST TWO
+            //【7画】
+            { "⾒" /* &#x2F92; */, "見" /* &#x898B; */ },			// みる	SEE
+            { "⾓" /* &#x2F93; */, "角" /* &#x89D2; */ },			// つの、つのへん	HORN
+            { "⾔" /* &#x2F94; */, "言" /* &#x8A00; */ },			// ごんべん	SPEECH
+            { "訁" /* &#x8A01; */, "言" /* &#x8A00; */ },			// ごんべん	GONBEN
+            { "⾕" /* &#x2F95; */, "谷" /* &#x8C37; */ },			// たに、たにへん	VALLEY
+            { "⾖" /* &#x2F96; */, "豆" /* &#x8C46; */ },			// まめ、まめへん	BEAN
+            { "⾗" /* &#x2F97; */, "豕" /* &#x8C55; */ },			// ぶた、いのこ	PIG
+            { "⾘" /* &#x2F98; */, "豸" /* &#x8C78; */ },			// むじな、むじなへん	BADGER
+            { "⾙" /* &#x2F99; */, "貝" /* &#x8C9D; */ },			// かい、かいへん	SHELL
+            { "⾚" /* &#x2F9A; */, "赤" /* &#x8D64; */ },			// あか	RED
+            { "⾛" /* &#x2F9B; */, "走" /* &#x8D70; */ },			// はしる、そうにょう	RUN
+            { "⾜" /* &#x2F9C; */, "足" /* &#x8DB3; */ },			// あし	FOOT
+            { "⻊" /* &#x2ECA; */, "足" /* &#x8DB3; */ },			// あしへん	(CJK) FOOT
+            { "⾝" /* &#x2F9D; */, "身" /* &#x8EAB; */ },			// み	BODY
+            { "⾞" /* &#x2F9E; */, "車" /* &#x8ECA; */ },			// くるま、くるまへん	CART
+            { "⾟" /* &#x2F9F; */, "辛" /* &#x8F9B; */ },			// からい	BITTER
+            { "⾠" /* &#x2FA0; */, "辰" /* &#x8FB0; */ },			// しんのたつ	MORNING
+            { "⾡" /* &#x2FA1; */, "辵" /* &#x8FB5; */ },			// しんにょう、しんにゅう	WALK
+            { "⾢" /* &#x2FA2; */, "邑" /* &#x9091; */ },			// むら、おおざと	CITY
+            { "⾣" /* &#x2FA3; */, "酉" /* &#x9149; */ },			// とり	WINE
+            { "⾤" /* &#x2FA4; */, "釆" /* &#x91C6; */ },			// のごめ	DISTINGUISH
+            { "⾥" /* &#x2FA5; */, "里" /* &#x91CC; */ },			// さと、さとへん	VILLAGE
+            { "⻨" /* &#x2EE8; */, "麦" /* &#x9EA6; */ },			// むぎ、むぎへん	(CJK) SIMPLIFIED WHEAT
+            // 【8画】
+            { "⾦" /* &#x2FA6; */, "金" /* &#x91D1; */ },			// かね、かねへん	GOLD
+            { "釒" /* &#x91D2; */, "金" /* &#x91D1; */ },			// かね、かねへん	GOLD
+            { "⾧" /* &#x2FA7; */, "長" /* &#x9577; */ },			// ながい	LONG
+            { "⾨" /* &#x2FA8; */, "門" /* &#x9580; */ },			// もんがまえ、もん	GATE
+            { "⾩" /* &#x2FA9; */, "阜" /* &#x961C; */ },			// こざとへん	MOUND
+            { "⾪" /* &#x2FAA; */, "隶" /* &#x96B6; */ },			// れいづくり	SLAVE
+            { "⾫" /* &#x2FAB; */, "隹" /* &#x96B9; */ },			// ふるとり	SHORT TAILED BIRD
+            { "⾬" /* &#x2FAC; */, "雨" /* &#x96E8; */ },			// あめ、あめかんむり	RAIN
+            { "⻗" /* &#x2ED7; */, "雨" /* &#x96E8; */ },			// あめ、あめかんむり	(CJK) RAIN
+            { "⾭" /* &#x2FAD; */, "靑" /* &#x9751; */ },			// あお	BLUE
+            { "⻘" /* &#x2ED8; */, "青" /* &#x9752; */ },			// あお	(CJK) BLUE
+            { "⾮" /* &#x2FAE; */, "非" /* &#x975E; */ },			// ひ、あらず	WRONG
+            { "⻫" /* &#x2EEB; */, "斉" /* &#x6589; */ },			// せい	(CJK) J-SIMPLIFIED EVEN
+            { "⻟" /* &#x2EDF; */, "飠" /* &#x98E0; */ },			// しょくへん	(CJK) EAT THREE
+            // 【9画】
+            { "⾯" /* &#x2FAF; */, "面" /* &#x9762; */ },			// めん	FACE
+            { "⾰" /* &#x2FB0; */, "革" /* &#x9769; */ },			// かわ	LEATHER
+            { "⾱" /* &#x2FB1; */, "韋" /* &#x97CB; */ },			// なめしがわ	TANNED LEATHER
+            { "⾲" /* &#x2FB2; */, "韭" /* &#x97ED; */ },			// にら	LEEK
+            { "⾳" /* &#x2FB3; */, "音" /* &#x97F3; */ },			// おと	SOUND
+            { "⾴" /* &#x2FB4; */, "頁" /* &#x9801; */ },			// おおがい、いちのかい	LEAF
+            { "⾵" /* &#x2FB5; */, "風" /* &#x98A8; */ },			// かぜ	WIND
+            { "⾶" /* &#x2FB6; */, "飛" /* &#x98DB; */ },			// とぶ	FLY
+            { "⾷" /* &#x2FB7; */, "食" /* &#x98DF; */ },			// しょく、しょくへん	EAT
+            { "⻝" /* &#x2EDD; */, "食" /* &#x98DF; */ },			// しょくへん	(CJK) EAT ONE
+            { "⻞" /* &#x2EDE; */, "𩙿" /* &#x2967F; */ },			// しょくへん	(CJK) EAT TWO
+            { "⾸" /* &#x2FB8; */, "首" /* &#x9996; */ },			// くび	HEAD
+            { "⾹" /* &#x2FB9; */, "香" /* &#x9999; */ },			// かおり	FRAGRANT
+            // 【10画】
+            { "⾺" /* &#x2FBA; */, "馬" /* &#x99AC; */ },			// うま、うまへん	HORSE
+            { "⾻" /* &#x2FBB; */, "骨" /* &#x9AA8; */ },			// ほね、ほねへん	BONE
+            { "⾼" /* &#x2FBC; */, "高" /* &#x9AD8; */ },			// たかい	TALL
+            { "⾽" /* &#x2FBD; */, "髟" /* &#x9ADF; */ },			// かみがしら、かみかんむり	HAIR
+            { "⾾" /* &#x2FBE; */, "鬥" /* &#x9B25; */ },			// とうがまえ、たたかいがまえ	FIGHT
+            { "⾿" /* &#x2FBF; */, "鬯" /* &#x9B2F; */ },			// ちょう、においざけ	SACRIFICIAL WINE
+            { "⿀" /* &#x2FC0; */, "鬲" /* &#x9B32; */ },			// れき、かなえ	CAULDRON
+            { "⿁" /* &#x2FC1; */, "鬼" /* &#x9B3C; */ },			// おに、きにょう	GHOST
+            { "⻯" /* &#x2EEF; */, "龍" /* &#x9F8D; */ },			// りゅう、たつ	(CJK) J-SIMPLIFIED DRAGON
+            // 【11画】
+            { "⿂" /* &#x2FC2; */, "魚" /* &#x9B5A; */ },			// うお、うおへん	FISH
+            { "⿃" /* &#x2FC3; */, "鳥" /* &#x9CE5; */ },			// とり	BIRD
+            { "⻩" /* &#x2EE9; */, "黄" /* &#x9EC4; */ },			// き	(CJK) SIMPLIFIED YELLOW
+            { "⿄" /* &#x2FC4; */, "鹵" /* &#x9E75; */ },			// しお	SALT
+            { "⿅" /* &#x2FC5; */, "鹿" /* &#x9E7F; */ },			// しか	DEER
+            { "⿆" /* &#x2FC6; */, "麥" /* &#x9EA5; */ },			// むぎ、むぎへん	WHEAT
+            { "⿇" /* &#x2FC7; */, "麻" /* &#x9EBB; */ },			// あさ	HEMP
+            { "⿊" /* &#x2FCA; */, "黑" /* &#x9ED1; */ },			// くろ	BLACK
+            { "⻲" /* &#x2EF2; */, "亀" /* &#x4E80; */ },			// かめ	(CJK) J-SIMPLIFIED TURTLE
+            // 【12画】
+            { "⿈" /* &#x2FC8; */, "黃" /* &#x9EC3; */ },			// き	YELLOW
+            { "⿉" /* &#x2FC9; */, "黍" /* &#x9ECD; */ },			// きび	MILLET
+            { "⿋" /* &#x2FCB; */, "黹" /* &#x9EF9; */ },			// ふつへん、ぬいとり	EMBROIDERY
+            { "⻭" /* &#x2EED; */, "歯" /* &#x6B6F; */ },			// は	(CJK) J-SIMPLIFIED TOOTH
+            // 【13画】
+            { "⿌" /* &#x2FCC; */, "黽" /* &#x9EFD; */ },			// べん、かえる	FROG
+            { "⿍" /* &#x2FCD; */, "鼎" /* &#x9F0E; */ },			// かなえ、てい	TRIPOD
+            { "⿎" /* &#x2FCE; */, "鼓" /* &#x9F13; */ },			// つづみ	DRUM
+            { "⿏" /* &#x2FCF; */, "鼠" /* &#x9F20; */ },			// ねずみ、ねずみへん	RAT
+            // 【14画】
+            { "⿐" /* &#x2FD0; */, "鼻" /* &#x9F3B; */ },			// はな	NOSE
+            { "⿑" /* &#x2FD1; */, "齊" /* &#x9F4A; */ },			// せい	EVEN
+            // 【15画】
+            { "⿒" /* &#x2FD2; */, "齒" /* &#x9F52; */ },			// は	TOOTH
+            // 【16画】					
+            { "⿓" /* &#x2FD3; */, "龍" /* &#x9F8D; */ },			// りゅう、たつ	DRAGON
+            { "⿔" /* &#x2FD4; */, "龜" /* &#x9F9C; */ },			// かめ	TURTLE
+            // 【17画】
+            { "⿕" /* &#x2FD5; */, "龠" /* &#x9FA0; */ },			// やく、ふえ	FLUTE
+        };
+    }
 }
