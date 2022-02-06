@@ -390,15 +390,6 @@ namespace Ribbon.Shared
                             building.Add(this.normalizeSymbolHash[ch.ToString()]);
                         }
                     }
-                    else if (this.normalizeTextRegex.IsMatch(oneWord))
-                    {
-                        var match = this.normalizeTextRegex.Match(oneWord);
-                        var replaceSource = this.normalizeTextHash[match.Value];
-                        foreach (var attrText in replaceSource)
-                        {
-                            building.Add(attrText);
-                        }
-                    }
                     else
                     {
                         oneWord += "," + outPair[1];
@@ -482,16 +473,6 @@ namespace Ribbon.Shared
         private Dictionary<string, string> normalizeSymbolHash;
         private Regex normalizeSymbolRegex;
 
-        private Dictionary<string, string[]> normalizeTextHash = new Dictionary<string, string[]>()
-        {
-            { "コロナウイルスワクチン", new string [] { "コロナ,名詞,一般,*,*,*,*,コロナ,コロナ,コロナ", "ウイルス,名詞,一般,*,*,*,*,ウイルス,ウイルス,ウイルス", "ワクチン,名詞,一般,*,*,*,*,ワクチン,ワクチン,ワクチン" } },
-            { "キャンプ", new string [] { "キャンプ,名詞,サ変接続,*,*,*,*,キャンプ,キャンプ,キャンプ" } },
-            { "マイナンバーカード", new string [] { "マイ,接頭詞,名詞接続,*,*,*,*,マイ,マイ,マイ", "ナンバー,名詞,一般,*,*,*,*,ナンバー,ナンバー,ナンバー", "カード,名詞,一般,*,*,*,*,カード,カード,カード" }},
-            { "ソーシャルメディアポリシー", new string [] { "ソーシャル,名詞,一般,*,*,*,*,ソーシャル,ソーシャル,ソーシャル", "メディア,名詞,一般,*,*,*,*,メディア,メディア,メディア",  "ポリシー,名詞,一般,*,*,*,*,ポリシー,ポリシー,ポリシー" }},
-            { "メンタルヘルス", new string [] { "メンタル,名詞,形容動詞語幹,*,*,*,*,メンタル,メンタル,メンタル", "ヘルス,名詞,一般,*,*,*,*,ヘルス,ヘルス,ヘルス" } },
-        };
-        private Regex normalizeTextRegex;
-
         private void SetupNormalizeData()
         {
             if (this.normalizeSymbolHash == null)
@@ -512,11 +493,6 @@ namespace Ribbon.Shared
                     this.normalizeSymbolHash.Add(sourceChar, targetWord);
                 }
                 this.normalizeSymbolRegex = new Regex("^[" + regexList + "]+$");
-            }
-            if (this.normalizeTextRegex == null)
-            {
-                var regexText = String.Join("|", this.normalizeTextHash.Keys.ToArray());
-                this.normalizeTextRegex = new Regex("^(" + regexText + ")$");
             }
         }
     }
