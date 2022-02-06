@@ -576,6 +576,10 @@ namespace Ribbon.Shared
             { "&hellip;", "…" },
             // Wrong?
             { "デ", "デ" },
+            // Frequnent appear Chinese
+            { "简", "簡" },
+            // Variation
+            { "﨑", "崎" },
             // 康熙字典部首 KANGXI RADICAL
             // 【1画】
             { "⼀" /* &#x2F00; */, "一" /* &#x4E00; */ },			// いち	ONE

@@ -2,8 +2,12 @@
 setlocal
 pushd
 
-copy /y user.csv "c:\Program Files (x86)\MeCab\dic\ipadic"
-copy /y overwrite.csv "c:\Program Files (x86)\MeCab\dic\ipadic"
+set MECABDIR="c:\Program Files (x86)\MeCab"
+set MECABDICTDIR=%MECABDIR%\dic\ipadic
+
+copy /y user.csv      %MECABDICTDIR%
+copy /y overwrite.csv %MECABDICTDIR%
+copy /y unk.def       %MECABDICTDIR%
 
 cd /d  "c:\Program Files (x86)\MeCab\dic\ipadic"
 
