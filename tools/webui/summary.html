@@ -43,6 +43,11 @@ word-prob {
 	font-size: 12px;
 }
 
+ul.phrase-list-list {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+}
 
 ul.phrase-list {
 	display: flex;
@@ -228,7 +233,7 @@ ko.components.register("word-prob", {
 
 ko.components.register("phrase-list-summary", {
 	template:
-		'<ul class="phrase-lsit-list">' +
+		'<ul class="phrase-list-list">' +
 			'<li class="phrase-list-container">' +
 				'<ul class="phrase-list">' +
 					'<li class="phrase-list-title"><span>Phrases</span></li>' +
