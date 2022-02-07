@@ -61,6 +61,9 @@ phrase-item {
 	min-width: 20ch;
 	font-size: 12px;
 }
+phrase-item .invalid {
+	color: red;
+}
 
 </style>
 <script type='text/javascript' src='https://ajax.aspnetcdn.com/ajax/knockout/knockout-3.5.0.js'></script>
@@ -315,14 +318,17 @@ ko.components.register("phrase-list-summary", {
 
 ko.components.register("phrase-item", {
 	template:
-		'<!-- ko foreach: words --><span data-bind="attr: { title: pos }, text:text"></span>/<!-- /ko --> (<span data-bind="text: count"></span>)'
+		'<!-- ko foreach: words --><span data-bind="css: { invalid: isInvalid }, attr: { title: pos }, text:text"></span>/<!-- /ko --> (<span data-bind="text: count"></span>)'
 		,
 		viewModel: function (params) {
 		var me = this;
+		var reIsValid = new RegExp("\\*,\\*$|,フィラー,");
 		me.words = params.ph.w.map(x => {
+			var isInValid = (reIsValid.exec(x) != null);
 			return {
 				pos: x,
-				text: x.split(",")[0]
+				isInvalid: isInValid,
+				text: x.split(",")[0] + (isInValid ? "*" : "")
 			};
 		});
 		me.count = params.ph.c;
