@@ -503,7 +503,8 @@ namespace Ribbon.Shared
 
         static Dictionary<string, Tuple<string, string>> inputNormalizeList = new Dictionary<string, Tuple<string, string>>()
         {
-            { "charcode", new Tuple<string, string>(@"&#[0-9A-Fa-f]{1,4};", "1") },
+            { "charcode10", new Tuple<string, string>(@"&#[0-9]{1,5};", "1") },
+            { "charcode16", new Tuple<string, string>(@"&#x[0-9A-Fa-f]{1,4};", "1") },
             { "a11", new Tuple<string, string>(@"[\u3000\u0020]+", "\u3000") },
             { "a12", new Tuple<string, string>(@"ーー+", "ー") },
             { "a13", new Tuple<string, string>(@"ぺージ", "ページ") }, // Hiragana PE => Katakana
@@ -522,16 +523,6 @@ namespace Ribbon.Shared
         public string NormalizeInput(string source)
         {
             var result = source;
-            // simple replacement rule
-            {
-                var listMatches = this.simpleMapping.Matches(result);
-                for (int i = listMatches.Count - 1; i >= 0; --i)
-                {
-                    var matchItem = listMatches[i];
-                    var replaceTo = simpleMappingList[matchItem.Value];
-                    result = result.Substring(0, matchItem.Index) + replaceTo + result.Substring(matchItem.Index + matchItem.Length);
-                }
-            }
             // complex
             {
                 var listMatches = this.inputNormalizeRegex.Matches(result);
@@ -543,9 +534,14 @@ namespace Ribbon.Shared
                     {
                         if (matchItem.Groups[kv.Key].Success)
                         {
-                            if (kv.Key == "charcode")
+                            if (kv.Key == "charcode10")
                             {
-                                var hexString = matchItem.Value.Substring(2, matchItem.Value.Length - 1 - 2);
+                                var numString = matchItem.Value.Substring(2, matchItem.Value.Length - 1 - 2);
+                                replaceTo = ((char)UInt32.Parse(numString, System.Globalization.NumberStyles.Number)).ToString();
+                            }
+                            else if (kv.Key == "charcode16")
+                            {
+                                var hexString = matchItem.Value.Substring(3, matchItem.Value.Length - 1 - 3);
                                 replaceTo = ((char)UInt32.Parse(hexString, System.Globalization.NumberStyles.HexNumber)).ToString();
                             }
                             else
@@ -556,6 +552,16 @@ namespace Ribbon.Shared
                             break;
                         }
                     }
+                }
+            }
+            // simple replacement rule
+            {
+                var listMatches = this.simpleMapping.Matches(result);
+                for (int i = listMatches.Count - 1; i >= 0; --i)
+                {
+                    var matchItem = listMatches[i];
+                    var replaceTo = simpleMappingList[matchItem.Value];
+                    result = result.Substring(0, matchItem.Index) + replaceTo + result.Substring(matchItem.Index + matchItem.Length);
                 }
             }
             return result;
@@ -576,10 +582,13 @@ namespace Ribbon.Shared
             { "&hellip;", "…" },
             // Wrong?
             { "デ", "デ" },
+            { "シ", "ジ" },
             // Frequnent appear Chinese
             { "简", "簡" },
+            { "舰", "艦" }, // Kan-kore?
             // Variation
             { "﨑", "崎" },
+            { "麵", "麺" },
             // 康熙字典部首 KANGXI RADICAL
             // 【1画】
             { "⼀" /* &#x2F00; */, "一" /* &#x4E00; */ },			// いち	ONE
