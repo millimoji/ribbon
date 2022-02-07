@@ -27,7 +27,7 @@ namespace Ribbon.Shared
 
         public Logger()
         {
-            FileStream fs = File.Open("log.txt", FileMode.Append, FileAccess.Write, FileShare.Read);
+            FileStream fs = File.Open(Constants.workingFolder + Constants.logFile, FileMode.Append, FileAccess.Write, FileShare.Read);
             m_fs = new StreamWriter(fs);
         }
         ~Logger()
@@ -36,7 +36,7 @@ namespace Ribbon.Shared
         }
         public void LogInternal(string content)
         {
-            m_fs.WriteLine(content);
+            m_fs.WriteLine(DateTime.Now.ToString() + ": " + content);
             m_fs.Flush();
         }
     }

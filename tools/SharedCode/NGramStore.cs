@@ -378,7 +378,8 @@ namespace Ribbon.Shared
                     string[] outPair = line.Split('\t');
                     if (outPair.Length != 2)
                     {
-                        throw new Exception("unknown output");
+                        Logger.Log($"Invalid line: [{line}]");
+                        continue;
                     }
                     string oneWord = WinApiBridge.Han2Zen(outPair[0]);
 
@@ -548,6 +549,10 @@ namespace Ribbon.Shared
                             else
                             {
                                 replaceTo = kv.Value.Item2;
+                            }
+                            if (replaceTo == "\r" || replaceTo == "\n")
+                            {
+                                replaceTo = "\u3000";
                             }
                             result = result.Substring(0, matchItem.Index) + replaceTo + result.Substring(matchItem.Index + matchItem.Length);
                             break;
