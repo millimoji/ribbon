@@ -175,20 +175,6 @@ namespace Ribbon.WebCrawler
                     return !m_db.TblUrl.Any(r => (r.url == e.url));
                 }).ToList();
 
-            try
-            {
-                m_db.TblUrl.InsertAllOnSubmit(insertUrlList);
-                m_db.SubmitChanges(ConflictMode.ContinueOnConflict);
-            }
-            catch (Exception e)
-            {
-                Shared.Logger.Log(e.ToString());
-
-                string insertingList = "";
-                insertUrlList.ForEach(url => { insertingList += "[" + url.orgUrl + "]"; });
-                Shared.Logger.Log(insertingList);
-            }
-
             var insertHostnameList = hostNames
                 .Where(e => (!m_db.TblHostname.Any(r => (r.hostname == e))))
                 .Select(e => new EntityHostname { hostname = e, })
@@ -196,16 +182,19 @@ namespace Ribbon.WebCrawler
 
             try
             {
+                m_db.TblUrl.InsertAllOnSubmit(insertUrlList);
                 m_db.TblHostname.InsertAllOnSubmit(insertHostnameList);
                 m_db.SubmitChanges(ConflictMode.ContinueOnConflict);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Shared.Logger.Log(ex.ToString());
+                Shared.Logger.Log(e.ToString());
                 string insertingList = "";
+                insertUrlList.ForEach(url => { insertingList += "[" + url.orgUrl + "]"; });
+                Shared.Logger.Log(insertingList);
+
                 insertHostnameList.ForEach(name => { insertingList += "[" + name + "]"; });
                 Shared.Logger.Log(insertingList);
-                Recoonect();
             }
         }
 
@@ -243,28 +232,19 @@ namespace Ribbon.WebCrawler
 
             try
             {
+                if (insertList.Count > 0)
+                {
+                    m_db.TblUrl.InsertAllOnSubmit(insertList);
+                }
                 m_db.SubmitChanges(ConflictMode.ContinueOnConflict);
             }
             catch (Exception ex)
             {
                 Shared.Logger.Log(ex.ToString());
+                string xlist = "";
+                insertList.ForEach(x => { xlist += "[" + x.url + "],"; });
+                Shared.Logger.Log(xlist);
                 Recoonect();
-            }
-            if (insertList.Count > 0)
-            {
-                try
-                {
-                    m_db.TblUrl.InsertAllOnSubmit(insertList);
-                    m_db.SubmitChanges(ConflictMode.ContinueOnConflict);
-                }
-                catch (Exception ex)
-                {
-                    Shared.Logger.Log(ex.ToString());
-                    string xlist = "";
-                    insertList.ForEach(x => { xlist += "[" + x.url + "],"; });
-                    Shared.Logger.Log(xlist);
-                    Recoonect();
-                }
             }
         }
 
