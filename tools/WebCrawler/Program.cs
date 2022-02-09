@@ -22,7 +22,7 @@ namespace Ribbon.WebCrawler
         }
 
         const int saveInternvalHour = 6;
-        const int parallelDownload = 20;
+        const int parallelDownload = 10;
 
         Shared.MorphAnalyzer m_morphAnalyzer = new Shared.MorphAnalyzer(Constants.workingFolder);
         Shared.NGramStore m_nGraphStore = new Shared.NGramStore(Constants.workingFolder);
@@ -32,13 +32,30 @@ namespace Ribbon.WebCrawler
         private DateTime programStartTime = DateTime.Now;
         private bool isEveryHourMode = true;
 
+        private string[] focusedDomains = new string[]
+        {
+            "https://www.asahi.com/",
+            "https://www.yomiuri.co.jp/",
+            "https://mainichi.jp/",
+            "https://www.nikkei.com/",
+            "https://www.sankei.com/",
+            "https://www.itmedia.co.jp/",
+            "https://ascii.jp/",
+            "https://www.atmarkit.co.jp/",
+            "https://ameblo.jp/",
+            "https://lineblog.me/",
+            "https://blog.goo.ne.jp/",
+            "https://blog.hatenablog.com/",
+            "https://plaza.rakuten.co.jp/",
+        };
+
         void Run()
         {
             // Loading the last result
             m_nGraphStore.LoadFromFile();
 
             Console.WriteLine("Picking up URLs");
-            var targetUrls = m_dbAcccessor.PickupUrls(parallelDownload);
+            var targetUrls = m_dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
             if (targetUrls.Count == 0)
             {
                 targetUrls.Add("https://www.sankei.com/");
@@ -49,17 +66,14 @@ namespace Ribbon.WebCrawler
             for (;;)
             {
                 Console.WriteLine("Picking up URLs");
-                targetUrls = m_dbAcccessor.PickupUrls(parallelDownload);
+                targetUrls = m_dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
 
                 if (targetUrls.Count == 0)
                 {
-                    targetUrls.Add("https://www.asahi.com/");
-                    targetUrls.Add("https://www.yomiuri.co.jp/");
-                    targetUrls.Add("https://mainichi.jp/");
-                    targetUrls.Add("https://www.nikkei.com/");
-                    targetUrls.Add("https://www.itmedia.co.jp/");
-                    targetUrls.Add("https://ascii.jp/");
-                    targetUrls.Add("https://www.atmarkit.co.jp/");
+                    foreach (var url in this.focusedDomains)
+                    {
+                        targetUrls.Add(url);
+                    }
                 }
 
                 var loadTask = LoadWebAndAnalyze(targetUrls);

@@ -268,7 +268,7 @@ namespace Ribbon.WebCrawler
             }
         }
 
-        public List<string> PickupUrls(int desiredCount)
+        public List<string> PickupUrls(int desiredCount, string [] focusedDomain)
         {
             List<string> hostNamesInDb = m_db.TblHostname
                 .Select(e => e.hostname)
@@ -312,6 +312,18 @@ namespace Ribbon.WebCrawler
 
             // update index
             m_lastHostnameIndex = (m_lastHostnameIndex + desiredCount) % hostNames.Count;
+
+            // append focused host names
+            foreach (var rootUrl in focusedDomain)
+            {
+                var uri = new Uri(rootUrl);
+                var pureHostname = this.GetPureHostName(uri.GetLeftPart(UriPartial.Authority));
+                if (!hostAndCount.Any(x => x.Key == pureHostname))
+                {
+                    hostAndCount.Add(pureHostname, 1);
+                }
+            }
+
 
             var urlResult = new List<string>();
 
@@ -371,9 +383,9 @@ namespace Ribbon.WebCrawler
             m_dbUrl.MarkHaveRead(urls);
         }
 
-        public List<string> PickupUrls(int desiredCount)
+        public List<string> PickupUrls(int desiredCount, string [] focusedDomains)
         {
-            return m_dbUrl.PickupUrls(desiredCount);
+            return m_dbUrl.PickupUrls(desiredCount, focusedDomains);
         }
     }
 }
