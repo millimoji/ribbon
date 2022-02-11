@@ -295,111 +295,83 @@ namespace Ribbon.Shared
     {
         TextNormalizer normalizer = new TextNormalizer();
 
-        string inputFilename;
-        string outputFilename;
-
         public MorphAnalyzer(string workingFolder)
         {
-            string threadId = System.Threading.Thread.CurrentThread.ManagedThreadId.ToString();
-            string dateText = DateTimeString();
-            inputFilename = workingFolder + dateText + "-" + threadId + "-in.txt";
-            outputFilename = workingFolder + dateText + "-" + threadId + "-out.txt";
-
             this.SetupNormalizeData();
         }
 
-        public string DateTimeString()
-        {
-            return DateTime.Now.ToString().Replace(' ', '-').Replace('/', '-').Replace(':', '-');
-        }
-
-
         public List<List<string>> Run(HashSet<string> srcText)
         {
-            WriteInputFile(srcText);
-
-            LaunchMecab();
-
-            var result = ReadOutputFile();
-
-            File.Delete(inputFilename);
-            File.Delete(outputFilename);
-
-            return result;
-        }
-
-        private void WriteInputFile(HashSet<string> srcText)
-        {
-            using (StreamWriter writeStream = new StreamWriter(inputFilename, false, Encoding.UTF8))
-            {
-                foreach (var text in srcText)
-                {
-                    var newText = this.normalizer.NormalizeInput(text);
-
-                    writeStream.WriteLine(newText);
-                }
-            }
-        }
-
-        private void LaunchMecab()
-        {
-            string parameters = string.Format("--input-buffer-size={0} --output={1} {2}", 0x8000, outputFilename, inputFilename);
-
+            string parameters = string.Format("--input-buffer-size={0}", 0x8000);
             System.Diagnostics.ProcessStartInfo processStart = new System.Diagnostics.ProcessStartInfo(Constants.mecabExe, parameters);
+            processStart.UseShellExecute = false;
+            processStart.RedirectStandardInput = true;
+            processStart.RedirectStandardOutput = true;
+            // processStart.StandardInputEncoding = System.Text.Encoding.UTF8;
+            processStart.StandardOutputEncoding = System.Text.Encoding.UTF8;
             processStart.CreateNoWindow = true;
             processStart.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
 
-            System.Diagnostics.Process p = System.Diagnostics.Process.Start(processStart);
-            p.WaitForExit();
-        }
+            var documents = new List<List<string>>();
 
-        private List<List<string>> ReadOutputFile()
-        {
-
-            var result = new List<List<string>>();
-
-            using (StreamReader mecabOutput = new StreamReader(outputFilename))
+            using (System.Diagnostics.Process p = System.Diagnostics.Process.Start(processStart))
             {
-                List<string> building = new List<string>();
-
-                string line;
-                line = mecabOutput.ReadLine(); // skip 1 line for BOM
-                while ((line = mecabOutput.ReadLine()) != null)
+                using (var sw = new StreamWriter(p.StandardInput.BaseStream, System.Text.Encoding.UTF8))
                 {
-                    if (line == "EOS")
+                    foreach (var text in srcText)
                     {
-                        if (building.Count > 0)
-                        {
-                            result.Add(building);
-                        }
-                        building = new List<string>();
-                        continue;
-                    }
-                    string[] outPair = line.Split('\t');
-                    if (outPair.Length != 2)
-                    {
-                        Logger.Log($"Invalid line: [{line}]");
-                        continue;
-                    }
-                    string oneWord = WinApiBridge.Han2Zen(outPair[0]);
+                        var newText = this.normalizer.NormalizeInput(text);
+                        sw.WriteLine(newText);
+                        sw.Flush();
 
-                    // normalizer
-                    if (this.normalizeSymbolRegex.IsMatch(oneWord))
-                    {
-                        foreach (var ch in oneWord)
-                        {
-                            building.Add(this.normalizeSymbolHash[ch.ToString()]);
-                        }
+                        var statement = ReadOutputStream(p.StandardOutput);
+                        documents.Add(statement);
                     }
-                    else
-                    {
-                        oneWord += "," + outPair[1];
-                        building.Add(oneWord);
-                    }
+                    sw.Close();
+                    p.StandardOutput.Close();
                 }
             }
+            return documents;
+        }
 
-            return result;
+        private List<string> ReadOutputStream(StreamReader mecabOutput)
+        {
+            List<string> building = new List<string>();
+
+            string line;
+            while ((line = mecabOutput.ReadLine()) != null)
+            {
+                if (line == "EOS")
+                {
+                    break;
+                }
+                string[] outPair = line.Split('\t');
+                if (outPair.Length != 2)
+                {
+                    Logger.Log($"Invalid line: [{line}]");
+                    continue;
+                }
+                if (outPair[0].Length == 0)
+                {
+                    continue; // ignore empty, usually, first output for BOM
+                }
+                string oneWord = WinApiBridge.Han2Zen(outPair[0]);
+
+                // normalizer
+                if (this.normalizeSymbolRegex.IsMatch(oneWord))
+                {
+                    foreach (var ch in oneWord)
+                    {
+                        building.Add(this.normalizeSymbolHash[ch.ToString()]);
+                    }
+                }
+                else
+                {
+                    oneWord += "," + outPair[1];
+                    building.Add(oneWord);
+                }
+            }
+            return building;
         }
 
         private static string[] normalizeSymbolList = new string[]
