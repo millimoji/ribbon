@@ -1,4 +1,10 @@
 @rem this script should run with Admin
+@rem
+@rem pos-id.def needs to be SHIFT-JIS
+@rem char.def is required, but it is written in ascii
+@rem unk.def use -f option
+@rem
+
 setlocal
 pushd
 
