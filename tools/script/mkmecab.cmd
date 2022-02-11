@@ -11,7 +11,7 @@ copy /y unk.def       %MECABDICTDIR%
 
 cd /d  "c:\Program Files (x86)\MeCab\dic\ipadic"
 
-..\..\bin\mecab-dict-index.exe -f SHIFT-JIS -t UTF-8
+..\..\bin\mecab-dict-index.exe -f utf-8 -t utf-8
 
 popd
 endlocal
