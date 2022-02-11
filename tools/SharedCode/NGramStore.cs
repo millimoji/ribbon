@@ -307,7 +307,6 @@ namespace Ribbon.Shared
             processStart.UseShellExecute = false;
             processStart.RedirectStandardInput = true;
             processStart.RedirectStandardOutput = true;
-            // processStart.StandardInputEncoding = System.Text.Encoding.UTF8;
             processStart.StandardOutputEncoding = System.Text.Encoding.UTF8;
             processStart.CreateNoWindow = true;
             processStart.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
@@ -321,6 +320,10 @@ namespace Ribbon.Shared
                     foreach (var text in srcText)
                     {
                         var newText = this.normalizer.NormalizeInput(text);
+                        if (newText == null)
+                        {
+                            continue;
+                        }
                         sw.WriteLine(newText);
                         sw.Flush();
 
@@ -488,6 +491,7 @@ namespace Ribbon.Shared
             { "a13", new Tuple<string, string>(@"ぺージ", "ページ") }, // Hiragana PE => Katakana
         };
         Regex inputNormalizeRegex;
+        Regex inputIgnoreCharacterRegex;
 
         public TextNormalizer()
         {
@@ -496,11 +500,19 @@ namespace Ribbon.Shared
 
             var regexRule = String.Join("|", inputNormalizeList.Select(kv => $"(?<{kv.Key}>{kv.Value.Item1})").ToArray());
             this.inputNormalizeRegex = new Regex(regexRule);
+
+            var ignoreRule = String.Join("|", ignoreSentenceCharList);
+            this.inputIgnoreCharacterRegex = new Regex(ignoreRule);
         }
 
         public string NormalizeInput(string source)
         {
             var result = source;
+            // ignore
+            if (this.inputIgnoreCharacterRegex.IsMatch(result))
+            {
+                return null;
+            }
             // complex
             {
                 var listMatches = this.inputNormalizeRegex.Matches(result);
@@ -549,6 +561,10 @@ namespace Ribbon.Shared
             return result;
         }
 
+        static string[] ignoreSentenceCharList = new string[] { // consider these are in Chinese context
+            "经", "网", "简", "舰",
+        };
+
         static Dictionary<string, string> simpleMappingList = new Dictionary<string, string>()
         {
             // HTML espace
@@ -594,9 +610,6 @@ namespace Ribbon.Shared
             { "\u3099", "\u309B" }, // Combine Dakuten => Dakuten (TODO: consider later)
             { "\u309A", "\u309C" }, // Combine Han-dakuten => Han-dakuten (TODO: consider later)
             */
-            // Frequnent appear Chinese
-            { "简", "簡" },
-            { "舰", "艦" }, // Kan-kore?
             // Variation
             { "﨑", "崎" },
             { "麵", "麺" },
