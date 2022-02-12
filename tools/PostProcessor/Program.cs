@@ -12,15 +12,27 @@ namespace Ribbon.PostProcessor
         static void Main(string[] args)
         {
 #if false
-            // test code
-            var normalizer = new Shared.TextNormalizer();
+            var nc = new Shared.NumberConverter();
+            var result = nc.TryParseNumber("１２万１０千");
+            Console.WriteLine($"{result.Item2}");
 
-            var src = "採/⽤/する";
+            result = nc.TryParseNumber("壱万弐千参百四拾五");
+            Console.WriteLine($"{result.Item2}");
 
-            var result = normalizer.NormalizeInput(src);
+            result = nc.TryParseNumber("二〇二一");
+            Console.WriteLine($"{result.Item2}");
 
-            Console.WriteLine(result);
+            result = nc.TryParseNumber("１万２万");
+            Console.WriteLine($"{result.Item2}");
 
+            result = nc.TryParseNumber("１２３百");
+            Console.WriteLine($"{result.Item2}");
+
+            result = nc.TryParseNumber("１２３万");
+            Console.WriteLine($"{result.Item2}");
+
+            result = nc.TryParseNumber("１２３億");
+            Console.WriteLine($"{result.Item2}");
 #else
             var postProcessor = new PostProcessor();
             postProcessor.Run();

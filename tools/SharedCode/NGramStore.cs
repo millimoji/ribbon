@@ -41,9 +41,8 @@ namespace Ribbon.Shared
 
         TopicModelHandler m_topicModel;
         TopicModelHandler m_mixUnigram;
-
-
         string m_workDir;
+
         public string DateTimeString()
         {
             return DateTime.Now.ToString().Replace(' ', '-').Replace('/', '-').Replace(':', '-');
@@ -294,6 +293,7 @@ namespace Ribbon.Shared
     public class MorphAnalyzer
     {
         TextNormalizer normalizer = new TextNormalizer();
+        NumberConverter numberConverter = new NumberConverter();
 
         public MorphAnalyzer(string workingFolder)
         {
@@ -328,6 +328,8 @@ namespace Ribbon.Shared
                         sw.Flush();
 
                         var statement = ReadOutputStream(p.StandardOutput);
+                        this.numberConverter.Convert(statement);
+
                         documents.Add(statement);
                     }
                     sw.Close();
@@ -915,4 +917,141 @@ namespace Ribbon.Shared
             { "⿕" /* &#x2FD5; */, "龠" /* &#x9FA0; */ },			// やく、ふえ	FLUTE
         };
     }
+
+    class NumberConverter
+    {
+        static Regex isNumber = new Regex(@",名詞,数,");
+        static Dictionary<char, long> kansujiToLong = new Dictionary<char, long>()
+        {
+            { '〇', 0 }, { '一', 1 }, { '二', 2 }, { '三', 3 }, { '四', 4 },
+            { '五', 5 }, { '六', 6 }, { '七', 7 }, { '八', 8 }, { '九', 9 },
+            { '壱', 1 }, { '弐', 2 }, { '参', 3 },
+        };
+        static Dictionary<char, long> smallKuraiToLong = new Dictionary<char, long>()
+        {
+            { '十', 10 }, { '百', 100 }, { '千', 1000 }, { '拾', 10 },
+        };
+        static Dictionary<char, long> bigKuraiToLong = new Dictionary<char, long>()
+        {
+            { '万', 10000 }, { '萬', 10000 }, { '億', 100000000 }, { '兆', 1000000000000 },
+        };
+
+        static string posNum31 = ",名詞,数,３１,*,*,*,*";              // month, hour, date or small number, japanese year
+        static string posNum999 = ",名詞,数,９９９,*,*,*,*";         // min, sec, day or countable
+        static string posNumBig = ",名詞,数,大,*,*,*,*";     // year, price
+
+        public void Convert(List<string> document)
+        {
+            for (int i = document.Count - 1; i >= 0; --i)
+            {
+                var result = TryConvertToNumber(document, i, "");
+                if (result.Item1)
+                {
+                    string insertingWord = null;
+                    if (result.Item2 <= 31)
+                    {
+                        insertingWord = result.Item4 + posNum31;
+                    }
+                    else if (result.Item2 < 1000)
+                    {
+                        insertingWord = result.Item4 + posNum999;
+                    }
+                    else
+                    {
+                        insertingWord = result.Item4 + posNumBig;
+                    }
+                    // replace
+                    document.RemoveRange(result.Item3, i - result.Item3 + 1);
+                    document.Insert(result.Item3, insertingWord);
+                    i = result.Item3;
+                }
+            }
+        }
+
+        Tuple<bool, long, int, string> TryConvertToNumber(List<string> document, int index, string rightPart)
+        {
+            var taggedWord = document[index];
+            if (!isNumber.IsMatch(taggedWord))
+            {
+                return new Tuple<bool, long, int, string>(false, -1L, -1, null);
+            }
+            var numberText = document[index].Split(',')[0] + rightPart;
+            if (index > 0)
+            {
+                var extendResult = this.TryConvertToNumber(document, index - 1, numberText + rightPart);
+                if (extendResult.Item1)
+                {
+                    return extendResult;
+                }
+            }
+
+            var parseResult = this.TryParseNumber(numberText);
+
+            if (parseResult.Item1)
+            {
+                return new Tuple<bool, long, int, string>(true, parseResult.Item2, index, parseResult.Item3);
+            }
+            return new Tuple<bool, long, int, string>(false, -1L, -1, null);
+        }
+
+        public Tuple<bool, long, string> TryParseNumber(string source)
+        {
+            var currentBigNumber = -1L;
+            var currentSmallNumber = -1L;
+            var currentNumber = -1L;
+            foreach (var ch in source)
+            {
+                if (ch >= '０' && ch <= '９')
+                {
+                    // TODO: consider mix arabic and Kansuji
+                    currentNumber = Math.Max(currentNumber, 0L) * 10 + (ch - '０');
+                    continue;
+                }
+                long kansujiNumber = 0;
+                if (kansujiToLong.TryGetValue(ch, out kansujiNumber))
+                {
+                    // TODO: consider mix arabic and Kansuji
+                    currentNumber = Math.Max(currentNumber, 0L) * 10 + kansujiNumber;
+                    continue;
+                }
+                long smallKuraiNumber = 0;
+                if (smallKuraiToLong.TryGetValue(ch, out smallKuraiNumber))
+                {
+                    if ((currentBigNumber >= 0 && (currentBigNumber % (smallKuraiNumber * 10) != 0)) ||
+                        (currentSmallNumber >= 0 && (currentSmallNumber % (smallKuraiNumber * 10) != 0)))
+                    {
+                        return new Tuple<bool, long, string>(false, -1, null);
+                    }
+                    if (currentNumber >= 0)
+                    {
+                        currentSmallNumber = Math.Max(currentSmallNumber, 0) + (currentNumber * smallKuraiNumber);
+                        currentNumber = -1L;
+                        continue;
+                    }
+                    currentSmallNumber = Math.Max(currentSmallNumber, 0) + smallKuraiNumber;
+                    continue;
+                }
+                long bigKuraiNumber = 0;
+                if (bigKuraiToLong.TryGetValue(ch, out bigKuraiNumber))
+                {
+                    if ((currentBigNumber >= 0 && (currentBigNumber % (bigKuraiNumber * 10000) != 0)) ||
+                        (currentSmallNumber >= 0 && (currentSmallNumber % (bigKuraiNumber * 10000) != 0)))
+                    {
+                        return new Tuple<bool, long, string>(false, -1, null);
+                    }
+                    if (currentSmallNumber >= 0 || currentNumber >= 0)
+                    {
+                        currentBigNumber = Math.Max(currentBigNumber, 0) + (Math.Max(currentSmallNumber, 0) + Math.Max(currentNumber, 0)) * bigKuraiNumber;
+                        currentNumber = -1L;
+                        currentSmallNumber = -1L;
+                        continue;
+                    }
+                    return new Tuple<bool, long, string>(false, -1, null);
+                }
+            }
+            var resultNumber = Math.Max(currentBigNumber, 0) + Math.Max(currentSmallNumber, 0) + Math.Max(currentNumber, 0);
+            return new Tuple<bool, long, string>(true, resultNumber, source);
+        }
+    }
+
 }
