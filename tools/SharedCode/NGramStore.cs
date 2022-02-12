@@ -936,9 +936,11 @@ namespace Ribbon.Shared
             { '万', 10000 }, { '萬', 10000 }, { '億', 100000000 }, { '兆', 1000000000000 },
         };
 
-        static string posNum31 = ",名詞,数,３１,*,*,*,*";              // month, hour, date or small number, japanese year
-        static string posNum999 = ",名詞,数,９９９,*,*,*,*";         // min, sec, day or countable
-        static string posNumBig = ",名詞,数,大,*,*,*,*";     // year, price
+        static string posNum31 = ",名詞,数,３１,*,*,*,";        // month, hour, date or small number, japanese year
+        static string posNum999 = ",名詞,数,９９９,*,*,";     // min, sec, day or countable
+        static string posNumBig = ",名詞,数,大,*,*,";        // year, price
+        
+        // 0:DIsplay, 1:POS1, 2:POS2, 3:POS3, 4:POS4, 5:POS5, 6:POS6, 7:Display, 8:Reading: 9:Speachi
 
         public void Convert(List<string> document)
         {
@@ -947,23 +949,33 @@ namespace Ribbon.Shared
                 var result = TryConvertToNumber(document, i, "");
                 if (result.Item1)
                 {
-                    string insertingWord = null;
-                    if (result.Item2 <= 31)
+                    var posText = (result.Item2 <= 31) ? posNum31 : (result.Item2 <= 1000) ? posNum999 : posNumBig;
+                    if (i == result.Item3)
                     {
-                        insertingWord = result.Item4 + posNum31;
-                    }
-                    else if (result.Item2 < 1000)
-                    {
-                        insertingWord = result.Item4 + posNum999;
+                        var orgWord = document[i];
+                        var splitParts = orgWord.Split(',');
+                        if (splitParts.Length > 9)
+                        {
+                            var newWord = $"{splitParts[0]}{posText}{splitParts[0]},{splitParts[8]},{splitParts[9]}";
+                            document[i] = newWord;
+                        }
+                        else
+                        {
+                            var newReading = WinApiBridge.Han2Zen(result.Item2.ToString());
+                            var newWord = $"{result.Item4}{posText}{result.Item4},{newReading},{newReading}";
+                            document[i] = newWord;
+                        }
                     }
                     else
                     {
-                        insertingWord = result.Item4 + posNumBig;
+                        var newReading = WinApiBridge.Han2Zen(result.Item2.ToString());
+                        var newWord = $"{result.Item4}{posText}{result.Item4},{newReading},{newReading}";
+
+                        // replace
+                        document.RemoveRange(result.Item3, i - result.Item3 + 1);
+                        document.Insert(result.Item3, newWord);
+                        i = result.Item3;
                     }
-                    // replace
-                    document.RemoveRange(result.Item3, i - result.Item3 + 1);
-                    document.Insert(result.Item3, insertingWord);
-                    i = result.Item3;
                 }
             }
         }
@@ -1048,6 +1060,7 @@ namespace Ribbon.Shared
                     }
                     return new Tuple<bool, long, string>(false, -1, null);
                 }
+                return new Tuple<bool, long, string>(false, -1, null);
             }
             var resultNumber = Math.Max(currentBigNumber, 0) + Math.Max(currentSmallNumber, 0) + Math.Max(currentNumber, 0);
             return new Tuple<bool, long, string>(true, resultNumber, source);

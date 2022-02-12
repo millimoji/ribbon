@@ -76,8 +76,8 @@ namespace Ribbon.WebCrawler
                     }
                 }
 
-                var loadTask = LoadWebAndAnalyze(targetUrls);
                 var dbTask = UpdateDatabase(downloadResult);
+                var loadTask = LoadWebAndAnalyze(targetUrls);
 
                 Task.WhenAll(loadTask, dbTask).GetAwaiter().GetResult();
 
@@ -165,12 +165,13 @@ namespace Ribbon.WebCrawler
         {
             return Task.Run(() =>
             {
-                Console.WriteLine("Begin: Store URLs");
+                var startTime = DateTime.Now;
+                Console.WriteLine($"Begin: Store URLs: {prevResult.referenceUrls.Count}");
                 m_dbAcccessor.StoreUrls(prevResult.referenceUrls);
                 Console.WriteLine("End: Store URLs");
-                Console.WriteLine("Begin: Mark read URL");
+                Console.WriteLine($"Begin: Mark read URL: {prevResult.pageUrls.Count}");
                 m_dbAcccessor.MarkHaveRead(prevResult.pageUrls);
-                Console.WriteLine("End: Mark read URL");
+                Console.WriteLine($"End: Mark read URL: {(DateTime.Now - startTime).TotalSeconds} sec");
             });
         }
     }
