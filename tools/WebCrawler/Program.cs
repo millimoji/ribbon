@@ -28,6 +28,7 @@ namespace Ribbon.WebCrawler
         Shared.NGramStore m_nGraphStore = new Shared.NGramStore(Constants.workingFolder);
         DbAcccessor m_dbAcccessor = new DbAcccessor(Constants.workingFolder);
 
+        private Random random = new Random();
         private DateTime lastSavedTime = DateTime.Now;
         private DateTime programStartTime = DateTime.Now;
         private bool isEveryHourMode = true;
@@ -169,7 +170,28 @@ namespace Ribbon.WebCrawler
             {
                 var startTime = DateTime.Now;
                 Console.WriteLine($">>> Begin Update DB: Store URLs: {prevResult.referenceUrls.Count}, Mark URLs: {prevResult.pageUrls.Count}");
-                m_dbAcccessor.StoreUrlsAndMarkRead(prevResult.referenceUrls, prevResult.pageUrls);
+
+                HashSet<string> addingUrls = prevResult.referenceUrls;
+
+                if (prevResult.referenceUrls.Count >= Constants.maxUrlsToAddOnceTime)
+                {
+                    // reduce urls upto Constants.maxUrlsToAddOnceTime, because it is too slow if 2000 over urls are added.
+                    var arrayedSourceUrls = prevResult.referenceUrls.ToArray();
+                    addingUrls = new HashSet<string>();
+
+                    int [] indexArray = new int[prevResult.referenceUrls.Count];
+                    for (int i = 0; i < prevResult.referenceUrls.Count; ++i) indexArray[i] = i;
+                    for (int i = 0; i < Constants.maxUrlsToAddOnceTime; ++i)
+                    {
+                        int swapTarget = this.random.Next(i + 1, prevResult.referenceUrls.Count);
+                        int x = indexArray[swapTarget];
+                        indexArray[swapTarget] = indexArray[i];
+                        indexArray[i] = x;
+                        addingUrls.Add(arrayedSourceUrls[x]);
+                    }
+                }
+
+                m_dbAcccessor.StoreUrlsAndMarkRead(addingUrls, prevResult.pageUrls);
                 Console.WriteLine($"<<< End Update DB: Elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, Store URLs: {prevResult.referenceUrls.Count}, Mark URLs: {prevResult.pageUrls.Count}");
             });
         }
