@@ -89,6 +89,8 @@ namespace Ribbon.WebCrawler
         {
             return Task<DownloadTaskResult>.Run(() =>
             {
+                var startTime = DateTime.Now;
+
                 List<Task<HtmlGetter>> tasks = targetUrls.Select(url =>
                     Task<HtmlGetter>.Run(() =>
                     {
@@ -156,7 +158,7 @@ namespace Ribbon.WebCrawler
                     }
                 }
                 var nextSaveTime = this.lastSavedTime + (this.isEveryHourMode ? new TimeSpan(1, 0, 0) : new TimeSpan(saveInternvalHour, 0, 0));
-                Console.WriteLine($"End: LoadWebAndAnalyze, next save time: {nextSaveTime.Hour}:{nextSaveTime.Minute}");
+                Console.WriteLine($"End: LoadWebAndAnalyze, elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, next save time: {nextSaveTime.Hour}:{nextSaveTime.Minute}");
                 return thisResult;
             });
         }
@@ -166,12 +168,9 @@ namespace Ribbon.WebCrawler
             return Task.Run(() =>
             {
                 var startTime = DateTime.Now;
-                Console.WriteLine($"Begin: Store URLs: {prevResult.referenceUrls.Count}");
-                m_dbAcccessor.StoreUrls(prevResult.referenceUrls);
-                Console.WriteLine("End: Store URLs");
-                Console.WriteLine($"Begin: Mark read URL: {prevResult.pageUrls.Count}");
-                m_dbAcccessor.MarkHaveRead(prevResult.pageUrls);
-                Console.WriteLine($"End: Mark read URL: {(DateTime.Now - startTime).TotalSeconds} sec");
+                Console.WriteLine($">>> Begin Update DB: Store URLs: {prevResult.referenceUrls.Count}, Mark URLs: {prevResult.pageUrls.Count}");
+                m_dbAcccessor.StoreUrlsAndMarkRead(prevResult.referenceUrls, prevResult.pageUrls);
+                Console.WriteLine($"<<< End Update DB: Elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, Store URLs: {prevResult.referenceUrls.Count}, Mark URLs: {prevResult.pageUrls.Count}");
             });
         }
     }

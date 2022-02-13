@@ -184,7 +184,7 @@ namespace Ribbon.WebCrawler
             {
                 m_db.TblUrl.InsertAllOnSubmit(insertUrlList);
                 m_db.TblHostname.InsertAllOnSubmit(insertHostnameList);
-                m_db.SubmitChanges(ConflictMode.ContinueOnConflict);
+                // m_db.SubmitChanges(ConflictMode.ContinueOnConflict);
             }
             catch (Exception e)
             {
@@ -236,7 +236,7 @@ namespace Ribbon.WebCrawler
                 {
                     m_db.TblUrl.InsertAllOnSubmit(insertList);
                 }
-                m_db.SubmitChanges(ConflictMode.ContinueOnConflict);
+                // m_db.SubmitChanges(ConflictMode.ContinueOnConflict);
             }
             catch (Exception ex)
             {
@@ -244,6 +244,19 @@ namespace Ribbon.WebCrawler
                 string xlist = "";
                 insertList.ForEach(x => { xlist += "[" + x.url + "],"; });
                 Shared.Logger.Log(xlist);
+                Recoonect();
+            }
+        }
+
+        public void SubmitChanges()
+        {
+            try
+            {
+                m_db.SubmitChanges(ConflictMode.ContinueOnConflict);
+            }
+            catch (Exception ex)
+            {
+                Shared.Logger.Log("SubmitChanges() is failed: ex.ToString()");
                 Recoonect();
             }
         }
@@ -353,14 +366,11 @@ namespace Ribbon.WebCrawler
         {
         }
 
-        public void StoreUrls(HashSet<string> urls)
+        public void StoreUrlsAndMarkRead(HashSet<string> storeUrls, HashSet<string> markUrls)
         {
-            m_dbUrl.StoreUrls(urls);
-        }
-
-        public void MarkHaveRead(HashSet<string> urls)
-        {
-            m_dbUrl.MarkHaveRead(urls);
+            m_dbUrl.StoreUrls(storeUrls);
+            m_dbUrl.MarkHaveRead(markUrls);
+            m_dbUrl.SubmitChanges();
         }
 
         public List<string> PickupUrls(int desiredCount, string [] focusedDomains)
