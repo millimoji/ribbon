@@ -47,7 +47,7 @@ namespace Ribbon.WebCrawler
             "https://lineblog.me/",
             "https://blog.goo.ne.jp/",
             "https://blog.hatenablog.com/",
-            "https://plaza.rakuten.co.jp/",
+            // "https://plaza.rakuten.co.jp/",
         };
 
         void Run()
