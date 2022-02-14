@@ -50,6 +50,8 @@ namespace Ribbon.PostProcessor
     {
         private WordTreeItem forward = new WordTreeItem(0);
         private WordTreeItem backward = new WordTreeItem(0);
+        private int bosId;
+        private int eosId;
 
         private double log2;
 
@@ -62,6 +64,9 @@ namespace Ribbon.PostProcessor
         {
             var nGramList = nGramStore.nGramList;
             var wordIdMappter = nGramStore.GetWordIdMapper();
+            this.bosId = wordIdMappter.Item2("[BOS]");
+            this.eosId = wordIdMappter.Item2("[EOS]");
+
             this.StoreWords(nGramStore, totalCounts);
 
             var scoredPhraseList = new List<Tuple<double, WordTreeItem>>();
@@ -246,6 +251,12 @@ namespace Ribbon.PostProcessor
                 }
 
                 parent.entropy = -entropyWork / maxEntropy;
+            }
+
+            if (parent.children.Any(x => (x.Value.wordId == this.bosId) || (x.Value.wordId == this.eosId)))
+            {
+                // boost up for BOS/EOS
+                parent.entropy = Math.Max(parent.entropy, parent.entropy * 0.5 + 0.5);
             }
 
             foreach (var kv in parent.children)
