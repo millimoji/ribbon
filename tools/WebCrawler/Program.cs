@@ -46,8 +46,8 @@ namespace Ribbon.WebCrawler
             "https://ameblo.jp/",
             "https://lineblog.me/",
             "https://blog.goo.ne.jp/",
-            // "https://blog.hatenablog.com/",
-            // "https://plaza.rakuten.co.jp/", Stop: this pick up from kaiba.rakuten.co.jp frequently
+            "https://blog.hatenablog.com/",
+            "https://plaza.rakuten.co.jp/",
         };
 
         void Run()

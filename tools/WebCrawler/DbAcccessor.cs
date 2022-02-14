@@ -61,6 +61,7 @@ namespace Ribbon.WebCrawler
         const string connectionPreString = "Data Source=(LocalDB)\\MSSQLLocalDB;AttachDbFilename=";
         const string connectionPostString = ";Integrated Security=True;Connect Timeout=30";
         string connectionFullString = "";
+        Random random = new System.Random();
 
         readonly TimeSpan MinimumUpdateInterval = new TimeSpan(7, 0, 0, 0);
 
@@ -323,13 +324,15 @@ namespace Ribbon.WebCrawler
             // Get Urls
             hostAndCount.Select(kvp =>
             {
-                var addingUrls = m_db.TblUrl.Where(e =>
+                var targetUrlList = m_db.TblUrl.Where(e =>
                     (e.hostname == kvp.Key) && (e.lastAccess < (DateTime.Now - MinimumUpdateInterval))
                 ).OrderBy(e =>
                     e.lastAccess
-                ).Take(
-                    kvp.Value
-                ).ToList();
+                );
+                var addingUrls = targetUrlList.
+                    Skip(this.random.Next(0, Math.Max(targetUrlList.Count() - kvp.Value, 1))).
+                    Take(kvp.Value).
+                    ToList();
 
                 addingUrls.ForEach(e =>
                 {
