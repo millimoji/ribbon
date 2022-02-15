@@ -1011,12 +1011,19 @@ namespace Ribbon.Shared
             var currentBigNumber = -1L;
             var currentSmallNumber = -1L;
             var currentNumber = -1L;
+            var allowedSmallNumber = -1L;
+            var allowedBigNumber = -1L;
             foreach (var ch in source)
             {
                 if (ch >= '０' && ch <= '９')
                 {
                     // TODO: consider mix arabic and Kansuji
                     currentNumber = Math.Max(currentNumber, 0L) * 10 + (ch - '０');
+                    if ((allowedSmallNumber >= 0 && currentNumber >= allowedSmallNumber) ||
+                        (allowedBigNumber >= 0 && currentNumber >= allowedBigNumber))
+                    {
+                        return new Tuple<bool, long, string>(false, -1, null);
+                    }
                     continue;
                 }
                 long kansujiNumber = 0;
@@ -1024,38 +1031,40 @@ namespace Ribbon.Shared
                 {
                     // TODO: consider mix arabic and Kansuji
                     currentNumber = Math.Max(currentNumber, 0L) * 10 + kansujiNumber;
-                    continue;
+                    if ((allowedSmallNumber >= 0 && currentNumber >= allowedSmallNumber) ||
+                        (allowedBigNumber >= 0 && currentNumber >= allowedBigNumber))
+                    {
+                        return new Tuple<bool, long, string>(false, -1, null);
+                    }
                 }
                 long smallKuraiNumber = 0;
                 if (smallKuraiToLong.TryGetValue(ch, out smallKuraiNumber))
                 {
-                    if ((currentBigNumber >= 0 && (currentBigNumber % (smallKuraiNumber * 10) != 0)) ||
-                        (currentSmallNumber >= 0 && (currentSmallNumber % (smallKuraiNumber * 10) != 0)))
+                    long addingNumber = (currentNumber >= 0) ? (currentNumber * smallKuraiNumber) : smallKuraiNumber;
+                    if ((allowedSmallNumber >= 0 && addingNumber >= allowedSmallNumber) ||
+                        (allowedBigNumber >= 0 && addingNumber >= allowedBigNumber))
                     {
                         return new Tuple<bool, long, string>(false, -1, null);
                     }
-                    if (currentNumber >= 0)
-                    {
-                        currentSmallNumber = Math.Max(currentSmallNumber, 0) + (currentNumber * smallKuraiNumber);
-                        currentNumber = -1L;
-                        continue;
-                    }
-                    currentSmallNumber = Math.Max(currentSmallNumber, 0) + smallKuraiNumber;
+                    currentNumber = -1L;
+                    allowedSmallNumber = smallKuraiNumber;
                     continue;
                 }
                 long bigKuraiNumber = 0;
                 if (bigKuraiToLong.TryGetValue(ch, out bigKuraiNumber))
                 {
-                    if ((currentBigNumber >= 0 && (currentBigNumber % (bigKuraiNumber * 10000) != 0)) ||
-                        (currentSmallNumber >= 0 && (currentSmallNumber % (bigKuraiNumber * 10000) != 0)))
-                    {
-                        return new Tuple<bool, long, string>(false, -1, null);
-                    }
                     if (currentSmallNumber >= 0 || currentNumber >= 0)
                     {
-                        currentBigNumber = Math.Max(currentBigNumber, 0) + (Math.Max(currentSmallNumber, 0) + Math.Max(currentNumber, 0)) * bigKuraiNumber;
+                        var addingNumber = (Math.Max(currentSmallNumber, 0) + Math.Max(currentNumber, 0)) * bigKuraiNumber;
+                        if (allowedBigNumber >= 0 && addingNumber >= allowedBigNumber)
+                        {
+                            return new Tuple<bool, long, string>(false, -1, null);
+                        }
+                        currentBigNumber = Math.Max(currentBigNumber, 0) + addingNumber;
                         currentNumber = -1L;
                         currentSmallNumber = -1L;
+                        allowedBigNumber = bigKuraiNumber;
+                        allowedSmallNumber = -1;
                         continue;
                     }
                     return new Tuple<bool, long, string>(false, -1, null);
