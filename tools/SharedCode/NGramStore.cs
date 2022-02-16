@@ -488,7 +488,7 @@ namespace Ribbon.Shared
             { "charcode10", new Tuple<string, string>(@"&#[0-9]{1,5};", "1") },
             { "charcode16", new Tuple<string, string>(@"&#x[0-9A-Fa-f]{1,4};", "1") },
             { "SVS", new Tuple<string, string>(@"\uFE00-\uFE0F", "") }, // remove variation selector (SVS)
-            { "a11", new Tuple<string, string>(@"[\u3000\u0020]+", "\u3000") },
+            { "a11", new Tuple<string, string>(@"[\u0020\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]+", "\u3000") }, // spaces
             { "a12", new Tuple<string, string>(@"ーー+", "ー") },
             { "a13", new Tuple<string, string>(@"ぺージ", "ページ") }, // Hiragana PE => Katakana
         };
