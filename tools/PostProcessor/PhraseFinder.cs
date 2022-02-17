@@ -28,6 +28,8 @@ namespace Ribbon.PostProcessor
         public List<Phrase> unknownHiragana { get; set; }
         public List<Phrase> unknownKanji { get; set; }
         public List<Phrase> unknownOthers { get; set; }
+        public List<Phrase> numbers { get; set; }
+        public List<Phrase> emojis { get; set; }
     }
 
     class WordTreeItem
@@ -137,6 +139,38 @@ namespace Ribbon.PostProcessor
                 //.Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.hasUnknownOthers(phrase.w))
                 .Take(100)
+                .ToList();
+
+
+            var id2text = nGramStore.GetWordIdMapper().Item1;
+            var unigramList = this.forward.children
+                .OrderByDescending(x => x.Value.count)
+                .Select(x => new Tuple<string, WordTreeItem>(id2text(x.Value.wordId), x.Value));
+
+            phraseSummary.numbers = unigramList
+                .Where(x => isNumberPos.IsMatch(x.Item1))
+                .Take(100)
+                .Select(x =>
+                {
+                    var phrase = new Phrase();
+                    phrase.w = new string[] { x.Item1 };
+                    phrase.p = x.Item2.nGramProb;
+                    phrase.c = x.Item2.count;
+                    return phrase;
+                })
+                .ToList();
+
+            phraseSummary.emojis = unigramList
+                .Where(x => isEmojiPos.IsMatch(x.Item1))
+                .Take(100)
+                .Select(x =>
+                {
+                    var phrase = new Phrase();
+                    phrase.w = new string[] { x.Item1 };
+                    phrase.p = x.Item2.nGramProb;
+                    phrase.c = x.Item2.count;
+                    return phrase;
+                })
                 .ToList();
 
             using (var fs = File.Create(summaryFileName))
@@ -311,6 +345,7 @@ namespace Ribbon.PostProcessor
         private static Regex isNumber = new Regex(@"^[０-９]+,");
         private static Regex isAlphabet = new Regex(@"^[Ａ-Ｚａ-ｚ]+,");
         private static Regex hasKanji = new Regex(@"^[\u2E80-\u2FDF々〻\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+,"); // \u20000-\u2FFFF ??
+        private static Regex isEmojiPos = new Regex(@",記号,絵文字,");
         // private static Regex isExcludingSymbols = new Regex(@"^[（）．，＆＃；－／％]+,");
 
         bool isAvailableAsPrediciton(string[] wordArray)

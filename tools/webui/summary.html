@@ -102,7 +102,9 @@ function DataModel()
 		unknownKatakana: ko.observableArray([]),
 		unknownHiragana: ko.observableArray([]),
 		unknownKanji: ko.observableArray([]),
-		unknownOthers: ko.observableArray([])
+		unknownOthers: ko.observableArray([]),
+		numbers: ko.observableArray([]),
+		emojis: ko.observableArray([])
 	};
 
 	me.reloadJson = (jsonUrl) => {
@@ -130,6 +132,8 @@ function DataModel()
 				me.pl.unknownHiragana(dataModel.unknownHiragana);
 				me.pl.unknownKanji(dataModel.unknownKanji);
 				me.pl.unknownOthers(dataModel.unknownOthers);
+				me.pl.numbers(dataModel.numbers);
+				me.pl.emojis(dataModel.emojis);
 
 			}
 		});
@@ -301,6 +305,22 @@ ko.components.register("phrase-list-summary", {
 					'<!-- /ko -->' +
 				'</ul>' +
 			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span>Numbers</span></li>' +
+					'<!-- ko foreach: numbers -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span>Emojis</span></li>' +
+					'<!-- ko foreach: emojis -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
 		'</ul>'
 	,
 	viewModel: function (params) {
@@ -313,6 +333,8 @@ ko.components.register("phrase-list-summary", {
 		me.unknownHiragana = params.dataModel.pl.unknownHiragana;
 		me.unknownKanji = params.dataModel.pl.unknownKanji;
 		me.unknownOthers = params.dataModel.pl.unknownOthers;
+		me.numbers = params.dataModel.pl.numbers;
+		me.emojis = params.dataModel.pl.emojis;
 	}
 });
 
