@@ -120,6 +120,10 @@ namespace EmojiCsvMaker
                                 var firstChar = resultText = char.ConvertFromUtf32(i);
                                 var noVsOutput = firstChar + emojiPosUnq + firstChar + emojiReading;
                                 outputStream.WriteLine(noVsOutput);
+
+                                // old variation
+                                noVsOutput = firstChar + "\uFE0E" + emojiPosUnq + firstChar + "\uFE0E" + emojiReading;
+                                outputStream.WriteLine(noVsOutput);
                             }
 
                         }
