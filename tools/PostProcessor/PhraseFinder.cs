@@ -345,7 +345,7 @@ namespace Ribbon.PostProcessor
         private static Regex isAlphabet = new Regex(@"^[Ａ-Ｚａ-ｚ]+,");
         private static Regex hasKanji = new Regex(@"^[\u2E80-\u2FDF々〻\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+,"); // \u20000-\u2FFFF ??
         private static Regex isEmojiPos = new Regex(@",記号,絵文字,");
-        private static Regex isAllowedSingleCharPos = new Regex(@",助詞,|,助動詞,|,動詞,|,接頭詞,|,接続詞,|,名詞,接尾,|,名詞,非自立,");
+        private static Regex isAllowedSingleCharPos = new Regex(@",助詞,|,助動詞,|,動詞,|,形容詞,|,接頭詞,|,接続詞,|,名詞,接尾,|,名詞,非自立,");
         private static Regex isOneCharKana= new Regex(@"^[ぁ-ゖァ-ヶー],");
         // private static Regex isExcludingSymbols = new Regex(@"^[（）．，＆＃；－／％]+,");
 
