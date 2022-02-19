@@ -26,6 +26,7 @@ namespace Ribbon.PostProcessor
         public List<Phrase> katakanaPhrase { get; set; }
         public List<Phrase> unknownKatakana { get; set; }
         public List<Phrase> unknownHiragana { get; set; }
+        public List<Phrase> singleUnknown { get; set; }
         public List<Phrase> unknownKanji { get; set; }
         public List<Phrase> unknownOthers { get; set; }
         public List<Phrase> numbers { get; set; }
@@ -35,6 +36,7 @@ namespace Ribbon.PostProcessor
     class WordTreeItem
     {
         public int wordId;
+        public string wordText;
         public int[] wordArray;
         public Dictionary<int, WordTreeItem> children = new Dictionary<int, WordTreeItem>();
         public WordTreeItem parent;
@@ -96,51 +98,46 @@ namespace Ribbon.PostProcessor
             phraseSummary.phraseList = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.isAvailableAsPrediciton(phrase.w))
-                .Take(100)
-                .ToList();
+                .Take(100).ToList();
 
             phraseSummary.unknownPhrase = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.hasUnknownWords(phrase.w))
-                .Take(100)
-                .ToList();
+                .Take(100).ToList();
 
             phraseSummary.unknownWords = sortedAllPhrases
                 .Where(phrase => phrase.w.Length == 1)
                 .Where(phrase => this.hasUnknownWords(phrase.w))
-                .Take(100)
-                .ToList();
+                .Take(100).ToList();
 
             phraseSummary.katakanaPhrase = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.isAllKatakana(phrase.w))
-                .Take(100)
-                .ToList();
+                .Take(100).ToList();
 
             phraseSummary.unknownKatakana = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.hasUnknownKatakana(phrase.w))
-                .Take(100)
-                .ToList();
+                .Take(100).ToList();
 
             phraseSummary.unknownHiragana = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.hasUnknownHiragana(phrase.w))
-                .Take(100)
-                .ToList();
+                .Take(100).ToList();
 
             phraseSummary.unknownKanji = sortedAllPhrases
                 //.Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.hasUnknownKanji(phrase.w))
-                .Take(100)
-                .ToList();
+                .Take(100).ToList();
+
+            phraseSummary.singleUnknown = sortedAllPhrases
+                .Where(x => this.isContainSingleCharAndKanji(x.w))
+                .Take(100).ToList();
 
             phraseSummary.unknownOthers = sortedAllPhrases
                 //.Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.hasUnknownOthers(phrase.w))
-                .Take(100)
-                .ToList();
-
+                .Take(100).ToList();
 
             var id2text = nGramStore.GetWordIdMapper().Item1;
             var unigramList = this.forward.children
@@ -201,6 +198,7 @@ namespace Ribbon.PostProcessor
 
         void StoreWords(Shared.NGramStore nGramStore, long [] totalCounts)
         {
+            var id2text = nGramStore.GetWordIdMapper().Item1;
             var nGramList = nGramStore.nGramList;
             for (int iGram = 0; iGram < nGramList.Length; ++iGram)
             {
@@ -210,8 +208,8 @@ namespace Ribbon.PostProcessor
                 {
                     var intArray = new int[] { wordList.Key.Item1, wordList.Key.Item2, wordList.Key.Item3, wordList.Key.Item4, wordList.Key.Item5, wordList.Key.Item6, wordList.Key.Item7 };
                     Array.Resize(ref intArray, iGram + 1);
-                    var forwardItem = this.StoreWordRecv(this.forward, 0, iGram, intArray, wordList.Value, false);
-                    var backwordItem = this.StoreWordRecv(this.backward, iGram, 0, intArray, wordList.Value, true);
+                    var forwardItem = this.StoreWordRecv(this.forward, 0, iGram, intArray, wordList.Value, id2text, false);
+                    var backwordItem = this.StoreWordRecv(this.backward, iGram, 0, intArray, wordList.Value, id2text, true);
                     forwardItem.pairItem = backwordItem;
                     backwordItem.pairItem = forwardItem;
                     forwardItem.phraseProb = (double)forwardItem.count / totalCountsInDouble;
@@ -222,13 +220,14 @@ namespace Ribbon.PostProcessor
             this.CalcChildrenProbsdRecv(this.backward);
         }
 
-        WordTreeItem StoreWordRecv(WordTreeItem parent, int nTh, int lastNth, int[] wordIds, long count, bool isBackword)
+        WordTreeItem StoreWordRecv(WordTreeItem parent, int nTh, int lastNth, int[] wordIds, long count, Func<int, string> id2text, bool isBackword)
         {
             int wordId = wordIds[nTh];
             WordTreeItem child;
             if (!parent.children.TryGetValue(wordId, out child))
             {
                 child = new WordTreeItem(wordId);
+                child.wordText = id2text(wordId);
                 child.wordArray = wordIds;
                 child.parent = parent;
                 parent.children.Add(wordId, child);
@@ -241,11 +240,11 @@ namespace Ribbon.PostProcessor
             }
             else if (!isBackword)
             {
-                return this.StoreWordRecv(child, nTh + 1, lastNth, wordIds, count, isBackword);
+                return this.StoreWordRecv(child, nTh + 1, lastNth, wordIds, count, id2text, isBackword);
             }
             else
             {
-                return this.StoreWordRecv(child, nTh - 1, lastNth, wordIds, count, isBackword);
+                return this.StoreWordRecv(child, nTh - 1, lastNth, wordIds, count, id2text, isBackword);
             }
         }
 
@@ -346,6 +345,8 @@ namespace Ribbon.PostProcessor
         private static Regex isAlphabet = new Regex(@"^[Ａ-Ｚａ-ｚ]+,");
         private static Regex hasKanji = new Regex(@"^[\u2E80-\u2FDF々〻\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+,"); // \u20000-\u2FFFF ??
         private static Regex isEmojiPos = new Regex(@",記号,絵文字,");
+        private static Regex isAllowedSingleCharPos = new Regex(@",助詞,|,助動詞,|,動詞,|,接頭詞,|,接続詞,|,名詞,接尾,|,名詞,非自立,");
+        private static Regex isOneCharKana= new Regex(@"^[ぁ-ゖァ-ヶー],");
         // private static Regex isExcludingSymbols = new Regex(@"^[（）．，＆＃；－／％]+,");
 
         bool isAvailableAsPrediciton(string[] wordArray)
@@ -435,5 +436,27 @@ namespace Ribbon.PostProcessor
             }
             return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumber.IsMatch(x) && !hasKanji.IsMatch(x) && !allHiragana.IsMatch(x) && !allKatakana.IsMatch(x));
         }
+
+        bool isContainSingleCharAndKanji(string[] wordArray)
+        {
+            if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
+            {
+                return false;
+            }
+            return wordArray.Length >= 3 && wordArray.Any(x => !isAllowedSingleCharPos.IsMatch(x) && isOneCharKana.IsMatch(x)) && wordArray.Any(x => hasKanji.IsMatch(x));
+        }
+
+        string[] chooseSingleHiraganaKatakana()
+        {
+            return this.forward.children.
+                OrderByDescending(x => x.Value.count).
+                Where(x => x.Value.wordText[1] == ',' && x.Value.wordText[0] != 'ー' // exclude cho-on
+                            && !isAllowedSingleCharPos.IsMatch(x.Value.wordText)
+                            && (allHiragana.IsMatch(x.Value.wordText) || allKatakana.IsMatch(x.Value.wordText))).
+                Take(10).
+                Select(x => x.Value.wordText).
+                ToArray();
+        }
+
     }
 }

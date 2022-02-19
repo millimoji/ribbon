@@ -101,6 +101,7 @@ function DataModel()
 		unknownWords: ko.observableArray([]),
 		unknownKatakana: ko.observableArray([]),
 		unknownHiragana: ko.observableArray([]),
+		singleKana: ko.observableArray([]),
 		unknownKanji: ko.observableArray([]),
 		unknownOthers: ko.observableArray([]),
 		numbers: ko.observableArray([]),
@@ -130,6 +131,7 @@ function DataModel()
 				me.pl.unknownWords(dataModel.unknownWords);
 				me.pl.unknownKatakana(dataModel.unknownKatakana);
 				me.pl.unknownHiragana(dataModel.unknownHiragana);
+				me.pl.singleKana(dataModel.singleUnknown);
 				me.pl.unknownKanji(dataModel.unknownKanji);
 				me.pl.unknownOthers(dataModel.unknownOthers);
 				me.pl.numbers(dataModel.numbers);
@@ -299,6 +301,14 @@ ko.components.register("phrase-list-summary", {
 			'</li>' +
 			'<li class="phrase-list-container">' +
 				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span>Single Kana</span></li>' +
+					'<!-- ko foreach: singleKana -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
 					'<li class="phrase-list-title"><span>Unknown Others</span></li>' +
 					'<!-- ko foreach: unknownOthers -->' +
 						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
@@ -331,6 +341,7 @@ ko.components.register("phrase-list-summary", {
 		me.unknownWords = params.dataModel.pl.unknownWords;
 		me.unknownKatakana = params.dataModel.pl.unknownKatakana;
 		me.unknownHiragana = params.dataModel.pl.unknownHiragana;
+		me.singleKana = params.dataModel.pl.singleKana;
 		me.unknownKanji = params.dataModel.pl.unknownKanji;
 		me.unknownOthers = params.dataModel.pl.unknownOthers;
 		me.numbers = params.dataModel.pl.numbers;
