@@ -66,6 +66,10 @@ phrase-item {
 phrase-item .invalid {
 	color: red;
 }
+phrase-item a {
+	color: black;
+	text-decoration: none;
+}
 
 </style>
 <script type='text/javascript' src='https://ajax.aspnetcdn.com/ajax/knockout/knockout-3.5.0.js'></script>
@@ -363,20 +367,27 @@ ko.components.register("phrase-list-summary", {
 
 ko.components.register("phrase-item", {
 	template:
-		'<!-- ko foreach: words --><span data-bind="css: { invalid: isInvalid }, attr: { title: pos }, text:text"></span>/<!-- /ko --> (<span data-bind="text: count"></span>)'
-		,
-		viewModel: function (params) {
+		'<a data-bind="attr: { href: url }" target="_blank">' +
+			'<!-- ko foreach: words --><span data-bind="css: { invalid: isInvalid }, attr: { title: pos }, text:text"></span>/<!-- /ko --> (<span data-bind="text: count"></span>)' +
+		'</a>'
+	,
+	viewModel: function (params) {
 		var me = this;
 		var reIsValid = new RegExp("\\*,\\*$|,フィラー,");
+		var textOnly = "";
 		me.words = params.ph.w.map(x => {
 			var isInValid = (reIsValid.exec(x) != null);
+			var displayText = x.split(",")[0];
+			textOnly += displayText;
 			return {
 				pos: x,
 				isInvalid: isInValid,
-				text: x.split(",")[0] + (isInValid ? "*" : "")
+				text: displayText + (isInValid ? "*" : "")
 			};
 		});
 		me.count = params.ph.c;
+		var queryString = new URLSearchParams({ q: textOnly }).toString()
+		me.url = "https://www.google.com/search?" + queryString;
 	}
 });
 
