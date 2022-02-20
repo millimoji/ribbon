@@ -173,7 +173,7 @@ namespace Ribbon.WebCrawler
 
                 HashSet<string> addingUrls = prevResult.referenceUrls;
 
-                if (prevResult.referenceUrls.Count >= Constants.maxUrlsToAddOnceTime)
+                if (prevResult.referenceUrls.Count > Constants.maxUrlsToAddOnceTime)
                 {
                     // reduce urls upto Constants.maxUrlsToAddOnceTime, because it is too slow if 2000 over urls are added.
                     var arrayedSourceUrls = prevResult.referenceUrls.ToArray();
@@ -183,7 +183,7 @@ namespace Ribbon.WebCrawler
                     for (int i = 0; i < prevResult.referenceUrls.Count; ++i) indexArray[i] = i;
                     for (int i = 0; i < Constants.maxUrlsToAddOnceTime; ++i)
                     {
-                        int swapTarget = this.random.Next(i + 1, prevResult.referenceUrls.Count);
+                        int swapTarget = this.random.Next(i, prevResult.referenceUrls.Count);
                         int x = indexArray[swapTarget];
                         indexArray[swapTarget] = indexArray[i];
                         indexArray[i] = x;

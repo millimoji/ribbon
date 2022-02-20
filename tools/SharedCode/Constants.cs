@@ -32,6 +32,6 @@ namespace Ribbon
         public const string summaryTopicModel = "topicModel";
         public const string summaryPhraseList = "phraseList";
 
-        public const int maxUrlsToAddOnceTime = 200;
+        public const int maxUrlsToAddOnceTime = 100;
     }
 }

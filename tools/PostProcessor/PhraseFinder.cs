@@ -286,9 +286,9 @@ namespace Ribbon.PostProcessor
                 parent.entropy = -entropyWork / maxEntropy;
             }
 
-            if (parent.children.Any(x => (x.Value.wordId == this.bosId) || (x.Value.wordId == this.eosId)))
+            if (parent.children.Any(x => (x.Value.wordId == this.bosId) /* || (x.Value.wordId == this.eosId) */))
             {
-                // boost up for BOS/EOS
+                // boost up for BOS. Do not Uuse EOS, it contains cut off text
                 parent.entropy = Math.Max(parent.entropy, parent.entropy * 0.5 + 0.5);
             }
 
