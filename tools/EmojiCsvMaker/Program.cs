@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace EmojiCsvMaker
 {
@@ -32,6 +33,8 @@ namespace EmojiCsvMaker
         Regex isCommentLine = new Regex(@"^\s*#");
         Regex isHexString = new Regex(@"^[0-9A-Fa-z]+$");
         Regex isVariationSelector = new Regex(@"^[\uFE00-\uFE0F]$");
+
+        int[] variationEmoji = new int [] { 0x2757 };
 
         public EmojiCsvMaker(string sourceDir, string outputDir)
         {
@@ -125,7 +128,17 @@ namespace EmojiCsvMaker
                                 noVsOutput = firstChar + "\uFE0E" + emojiPosUnq + firstChar + "\uFE0E" + emojiReading;
                                 outputStream.WriteLine(noVsOutput);
                             }
-
+                        }
+                        else if (codeList.Length == 1)
+                        {
+                            if (variationEmoji.Any(x => (x == i)))
+                            {
+                                var firstChar = resultText = char.ConvertFromUtf32(i);
+                                var variant1 = firstChar + "\uFE0E" + emojiPosUnq + firstChar + "\uFE0E" + emojiReading;
+                                outputStream.WriteLine(variant1);
+                                var variant2 = firstChar + "\uFE0F" + emojiPosUnq + firstChar + "\uFE0F" + emojiReading;
+                                outputStream.WriteLine(variant2);
+                            }
                         }
                     }
                 }

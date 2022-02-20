@@ -356,7 +356,7 @@ namespace Ribbon.Shared
                     Logger.Log($"Invalid line: [{line}]");
                     continue;
                 }
-                if (outPair[0].Length == 0)
+                if (outPair[0].Length == 0 || outPair[0] == "\uFEFF")
                 {
                     continue; // ignore empty, usually, first output for BOM
                 }

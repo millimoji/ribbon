@@ -101,39 +101,51 @@ namespace Ribbon.PostProcessor
                 .Where(phrase => this.isAvailableAsPrediciton(phrase.w))
                 .Take(100).ToList();
 
-            phraseSummary.unknownPhrase = sortedAllPhrases
-                .Where(phrase => phrase.w.Length > 1)
-                .Where(phrase => this.hasUnknownWords(phrase.w))
-                .Take(100).ToList();
-
-            phraseSummary.unknownWords = sortedAllPhrases
-                .Where(phrase => phrase.w.Length == 1)
-                .Where(phrase => this.hasUnknownWords(phrase.w))
-                .Take(100).ToList();
-
             phraseSummary.katakanaPhrase = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.isAllKatakana(phrase.w))
                 .Take(100).ToList();
 
+            phraseSummary.unknownPhrase = sortedAllPhrases
+                .Where(phrase => phrase.w.Length > 1)
+                .Select(phrase => this.evaluateAsUnknown(phrase))
+                .Where(x => x.Item1)
+                .OrderByDescending(x => x.Item2 * x.Item3.p)
+                .Take(100).Select(x => x.Item3).ToList();
+
+            phraseSummary.unknownWords = sortedAllPhrases
+                .Where(phrase => phrase.w.Length == 1)
+                .Select(phrase => this.evaluateAsUnknown(phrase))
+                .Where(x => x.Item1)
+                .OrderByDescending(x => x.Item2 * x.Item3.p)
+                .Take(100).Select(x => x.Item3).ToList();
+
             phraseSummary.unknownKatakana = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
-                .Where(phrase => this.hasUnknownKatakana(phrase.w))
-                .Take(100).ToList();
+                .Select(phrase => this.evaluateAsUnknownKatakana(phrase))
+                .Where(x => x.Item1)
+                .OrderByDescending(x => x.Item2 * x.Item3.p)
+                .Take(100).Select(x => x.Item3).ToList();
 
             phraseSummary.unknownHiragana = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
-                .Where(phrase => this.hasUnknownHiragana(phrase.w))
-                .Take(100).ToList();
+                .Select(phrase => this.evaluateAsUnknownHiragana(phrase))
+                .Where(x => x.Item1)
+                .OrderByDescending(x => x.Item2 * x.Item3.p)
+                .Take(100).Select(x => x.Item3).ToList();
 
             phraseSummary.unknownKanji = sortedAllPhrases
                 //.Where(phrase => phrase.w.Length > 1)
-                .Where(phrase => this.hasUnknownKanji(phrase.w))
-                .Take(100).ToList();
+                .Select(phrase => this.evaluateAsUnknownKanji(phrase))
+                .Where(x => x.Item1)
+                .OrderByDescending(x => x.Item2 * x.Item3.p)
+                .Take(100).Select(x => x.Item3).ToList();
 
             phraseSummary.singleUnknown = sortedAllPhrases
-                .Where(x => this.isContainSingleCharAndKanji(x.w))
-                .Take(100).ToList();
+                .Select(phrase => this.evaluateSingleKanaWord(phrase))
+                .Where(x => x.Item1)
+                .OrderByDescending(x => x.Item2 * x.Item3.p)
+                .Take(100).Select(x => x.Item3).ToList();
 
             phraseSummary.unknownOthers = sortedAllPhrases
                 //.Where(phrase => phrase.w.Length > 1)
@@ -292,9 +304,9 @@ namespace Ribbon.PostProcessor
                 parent.entropy = -entropyWork / maxEntropy;
             }
 
-            if (parent.children.Any(x => (x.Value.wordId == this.bosId) /* || (x.Value.wordId == this.eosId) */))
+            if (parent.children.Any(x => (x.Value.wordId == this.bosId) || (x.Value.wordId == this.eosId)))
             {
-                // boost up for BOS. Do not Uuse EOS, it contains cut off text
+                // boost up for BOS or EOS.
                 parent.entropy = Math.Max(parent.entropy, parent.entropy * 0.5 + 0.5);
             }
 
@@ -390,13 +402,24 @@ namespace Ribbon.PostProcessor
             return true;
         }
 
-        bool hasUnknownWords(string [] wordArray)
+        bool isUnknownWord(string x)
         {
+            return (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumberPos.IsMatch(x) && !isAlphabet.IsMatch(x) /* && !isExcludingSymbols.IsMatch(x) */;
+        }
+
+        Tuple<bool, double, Phrase> evaluateAsUnknown(Phrase phrase)
+        {
+            var wordArray = phrase.w;
             if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
             {
-                return false;
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
             }
-            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumberPos.IsMatch(x) && !isAlphabet.IsMatch(x) /* && !isExcludingSymbols.IsMatch(x) */);
+            if (!wordArray.Any(x => this.isUnknownWord(x)))
+            {
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
+            }
+            var isBoost = this.isUnknownWord(wordArray[wordArray.Length / 2]);
+            return new Tuple<bool, double, Phrase>(true, isBoost ? 1.0 : 0.5, phrase);
         }
 
         bool isAllKatakana(string [] wordArray)
@@ -409,31 +432,64 @@ namespace Ribbon.PostProcessor
                 && wordArray.Any(x => (x.Split(',')[0].Length <= 2 || matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)));
         }
 
-        bool hasUnknownHiragana(string[] wordArray)
+        bool isUnknownHiragana(string x)
         {
-            if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
-            {
-                return false;
-            }
-            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && allHiragana.IsMatch(x));
+            return (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && allHiragana.IsMatch(x);
         }
 
-        bool hasUnknownKatakana(string[] wordArray)
+        Tuple<bool, double, Phrase> evaluateAsUnknownHiragana(Phrase phrase)
         {
+            var wordArray = phrase.w;
             if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
             {
-                return false;
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
             }
-            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && allKatakana.IsMatch(x));
+            if (!wordArray.Any(x => isUnknownHiragana(x)))
+            {
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
+            }
+            var isBoost = this.isUnknownHiragana(wordArray[wordArray.Length / 2]);
+            return new Tuple<bool, double, Phrase>(true, isBoost ? 1.0 : 0.5, phrase);
         }
 
-        bool hasUnknownKanji(string [] wordArray)
+        bool isUnknownKatakana(string x)
         {
+            return (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && allKatakana.IsMatch(x);
+        }
+
+        Tuple<bool, double, Phrase> evaluateAsUnknownKatakana(Phrase phrase)
+        {
+            var wordArray = phrase.w;
             if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
             {
-                return false;
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
             }
-            return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && hasKanji.IsMatch(x));
+            if (!wordArray.Any(x => isUnknownKatakana(x)))
+            {
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
+            }
+            var isBoost = this.isUnknownKatakana(wordArray[wordArray.Length / 2]);
+            return new Tuple<bool, double, Phrase>(true, isBoost ? 1.0 : 0.5, phrase);
+        }
+
+        bool isUnknownKanji(string x)
+        {
+            return (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && hasKanji.IsMatch(x);
+        }
+
+        Tuple<bool, double, Phrase> evaluateAsUnknownKanji(Phrase phrase)
+        {
+            var wordArray = phrase.w;
+            if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
+            {
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
+            }
+            if (!wordArray.Any(x => isUnknownKanji(x)))
+            {
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
+            }
+            var isBoost = this.isUnknownKanji(wordArray[wordArray.Length / 2]);
+            return new Tuple<bool, double, Phrase>(true, isBoost ? 1.0 : 0.5, phrase);
         }
 
         bool hasUnknownOthers(string[] wordArray)
@@ -454,25 +510,24 @@ namespace Ribbon.PostProcessor
             return wordArray.Count(x => isNamePos.IsMatch(x)) >= 2 && wordArray.All(x => (isNamePos.IsMatch(x) || isSymbolPos.IsMatch(x)));
         }
 
-        bool isContainSingleCharAndKanji(string[] wordArray)
+        bool isOneKanaChar(string x)
         {
-            if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
-            {
-                return false;
-            }
-            return wordArray.Length >= 3 && wordArray.Any(x => !isAllowedSingleCharPos.IsMatch(x) && isOneCharKana.IsMatch(x)) && wordArray.Any(x => hasKanji.IsMatch(x));
+            return !isAllowedSingleCharPos.IsMatch(x) && isOneCharKana.IsMatch(x);
         }
 
-        string[] chooseSingleHiraganaKatakana()
+        Tuple<bool, double, Phrase> evaluateSingleKanaWord(Phrase phrase)
         {
-            return this.forward.children.
-                OrderByDescending(x => x.Value.count).
-                Where(x => x.Value.wordText[1] == ',' && x.Value.wordText[0] != 'ー' // exclude cho-on
-                            && !isAllowedSingleCharPos.IsMatch(x.Value.wordText)
-                            && (allHiragana.IsMatch(x.Value.wordText) || allKatakana.IsMatch(x.Value.wordText))).
-                Take(10).
-                Select(x => x.Value.wordText).
-                ToArray();
+            var wordArray = phrase.w;
+            if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]") || wordArray.Length < 3)
+            {
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
+            }
+            if (!(wordArray.Any(x => isOneKanaChar(x)) && wordArray.Any(x => hasKanji.IsMatch(x))))
+            {
+                return new Tuple<bool, double, Phrase>(false, 1.0, phrase);
+            }
+            var isBoost = this.isOneKanaChar(wordArray[wordArray.Length / 2]);
+            return new Tuple<bool, double, Phrase>(true, isBoost ? 1.0 : 0.5, phrase);
         }
 
     }
