@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-<!-- "c:\Program Files\Google\Chrome\Application\chrome.exe" --allow-file-access-from-files file:///D:/Git/ribbon/tools/webui/summary.html -->
+<!--
+"c:\Program Files\Google\Chrome\Application\chrome.exe" --allow-file-access-from-files file:///D:/Git/ribbon/tools/webui/summary.html
+-->
 <!-- TODO: move to better way to build as SPA -->
 <style>
 ul {
@@ -105,7 +107,8 @@ function DataModel()
 		unknownKanji: ko.observableArray([]),
 		unknownOthers: ko.observableArray([]),
 		numbers: ko.observableArray([]),
-		emojis: ko.observableArray([])
+		emojis: ko.observableArray([]),
+		personNames: ko.observableArray([]),
 	};
 
 	me.reloadJson = (jsonUrl) => {
@@ -136,7 +139,7 @@ function DataModel()
 				me.pl.unknownOthers(dataModel.unknownOthers);
 				me.pl.numbers(dataModel.numbers);
 				me.pl.emojis(dataModel.emojis);
-
+				me.pl.personNames(dataModel.personNames);
 			}
 		});
 	};
@@ -331,6 +334,14 @@ ko.components.register("phrase-list-summary", {
 					'<!-- /ko -->' +
 				'</ul>' +
 			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span>Person names</span></li>' +
+					'<!-- ko foreach: personNames -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
 		'</ul>'
 	,
 	viewModel: function (params) {
@@ -346,6 +357,7 @@ ko.components.register("phrase-list-summary", {
 		me.unknownOthers = params.dataModel.pl.unknownOthers;
 		me.numbers = params.dataModel.pl.numbers;
 		me.emojis = params.dataModel.pl.emojis;
+		me.personNames = params.dataModel.pl.personNames;
 	}
 });
 
