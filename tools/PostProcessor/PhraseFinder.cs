@@ -31,6 +31,7 @@ namespace Ribbon.PostProcessor
         public List<Phrase> unknownOthers { get; set; }
         public List<Phrase> numbers { get; set; }
         public List<Phrase> emojis { get; set; }
+        public List<Phrase> personNames { get; set; }
     }
 
     class WordTreeItem
@@ -169,6 +170,11 @@ namespace Ribbon.PostProcessor
                     return phrase;
                 })
                 .ToList();
+
+            phraseSummary.personNames = sortedAllPhrases
+                .Where(phrase => phrase.w.Length > 1)
+                .Where(phrase => this.isNamesPos(phrase.w))
+                .Take(100).ToList();
 
             using (var fs = File.Create(summaryFileName))
             {
@@ -347,6 +353,8 @@ namespace Ribbon.PostProcessor
         private static Regex isEmojiPos = new Regex(@",記号,絵文字,");
         private static Regex isAllowedSingleCharPos = new Regex(@",助詞,|,助動詞,|,動詞,|,形容詞,|,接頭詞,|,接続詞,|,名詞,接尾,|,名詞,非自立,");
         private static Regex isOneCharKana= new Regex(@"^[ぁ-ゖァ-ヶー],");
+        private static Regex isNamePos = new Regex(@",名詞,固有名詞,人名,");
+        private static Regex isSymbolPos = new Regex(@",記号,");
         // private static Regex isExcludingSymbols = new Regex(@"^[（）．，＆＃；－／％]+,");
 
         bool isAvailableAsPrediciton(string[] wordArray)
@@ -435,6 +443,15 @@ namespace Ribbon.PostProcessor
                 return false;
             }
             return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumber.IsMatch(x) && !hasKanji.IsMatch(x) && !allHiragana.IsMatch(x) && !allKatakana.IsMatch(x));
+        }
+
+        bool isNamesPos(string[] wordArray)
+        {
+            if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
+            {
+                return false;
+            }
+            return wordArray.Count(x => isNamePos.IsMatch(x)) >= 2 && wordArray.All(x => (isNamePos.IsMatch(x) || isSymbolPos.IsMatch(x)));
         }
 
         bool isContainSingleCharAndKanji(string[] wordArray)
