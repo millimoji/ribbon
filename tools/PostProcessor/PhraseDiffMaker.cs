@@ -22,7 +22,8 @@ namespace Ribbon.PostProcessor
             var oldSummary = this.ReadOldestPhrase();
 
             var diffSummary = new PhraseSummary();
-            diffSummary.generatedTime = $"{oldSummary.generatedTime} => ${newSummary.generatedTime}";
+            diffSummary.generatedTime = $"{oldSummary.generatedTime} => {newSummary.generatedTime}";
+            diffSummary.summaryType = Constants.summaryPhraseList;
 
             diffSummary.phraseList = this.MakeDiff(newSummary.phraseList, oldSummary.phraseList);
             diffSummary.unknownPhrase = this.MakeDiff(newSummary.unknownPhrase, oldSummary.unknownPhrase);
