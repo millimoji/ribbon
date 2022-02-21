@@ -11,6 +11,7 @@ pushd
 set MECABDIR="c:\Program Files (x86)\MeCab"
 set MECABDICTDIR=%MECABDIR%\dic\ipadic
 
+copy /y _onlytagging.csv %MECABDICTDIR%
 copy /y user.csv      %MECABDICTDIR%
 copy /y overwrite.csv %MECABDICTDIR%
 copy /y unk.def       %MECABDICTDIR%

@@ -24,6 +24,7 @@ namespace Ribbon
 
         public const string phraseList = "phrase-list.txt";
         public const string phraseListSummary = "phrase-list-summary.json";
+        public const string phraseListSummaryDiff = "phrase-list-summary-diff.json";
 
         public const string old3prefix = "old3-";
         public const string old2prefix = "old2-";

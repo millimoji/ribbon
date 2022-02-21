@@ -65,7 +65,7 @@ namespace Ribbon.PostProcessor
             this.log2 = Math.Log(2.0);
         }
 
-        public void FindAndSave(string fileName, string summaryFileName, Shared.NGramStore nGramStore, long [] totalCounts)
+        public PhraseSummary FindAndSave(string fileName, string summaryFileName, Shared.NGramStore nGramStore, long [] totalCounts)
         {
             var nGramList = nGramStore.nGramList;
             var wordIdMappter = nGramStore.GetWordIdMapper();
@@ -195,6 +195,7 @@ namespace Ribbon.PostProcessor
                     JsonSerializer.Serialize(writer, phraseSummary);
                 }
             }
+            return phraseSummary;
         }
 
 

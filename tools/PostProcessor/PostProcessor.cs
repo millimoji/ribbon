@@ -16,6 +16,7 @@ namespace Ribbon.PostProcessor
                 Constants.mixUnigramSummaryFilename,
                 Constants.phraseList,
                 Constants.phraseListSummary,
+                Constants.phraseListSummaryDiff,
             };
             Shared.FileOperation.SlideDataFile(targetFiles, Constants.workingFolder);
 
@@ -32,7 +33,10 @@ namespace Ribbon.PostProcessor
         void FindPhraseAndSave(Shared.NGramStore nGramStore, long [] totalCounts)
         {
             var phraseFinder = new PhraseFinder();
-            phraseFinder.FindAndSave(Constants.workingFolder + Constants.phraseList, Constants.workingFolder + Constants.phraseListSummary, nGramStore, totalCounts);
+            var newSummary = phraseFinder.FindAndSave(Constants.workingFolder + Constants.phraseList, Constants.workingFolder + Constants.phraseListSummary, nGramStore, totalCounts);
+
+            var phraseDiffMaker = new PhraseDiffMaker(Constants.workingFolder);
+            phraseDiffMaker.MakeDiff(newSummary);
         }
 
         void SummarizeTopicModel(Shared.NGramStore nGramStore)

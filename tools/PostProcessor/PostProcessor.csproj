@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PhraseDiffMaker.cs" />
     <Compile Include="PhraseFinder.cs" />
     <Compile Include="PostProcessor.cs" />
     <Compile Include="TopicModelSummarizer.cs" />

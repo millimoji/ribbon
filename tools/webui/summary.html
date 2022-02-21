@@ -84,6 +84,7 @@ function DataModel()
 	me.mixUnigramSummaryJson = "mixunigram-summary.json";
 	me.topicModelSummaryJson = "topicmodel-summary.json";
 	me.phraseListSummaryJson = "phrase-list-summary.json";
+	me.phraseListSummaryDiffJson = "phrase-list-summary-diff.json";
 	me.summaryTypeTopicModel = "topicModel";
 	me.summaryTypePhraseList = "phraseList";
 
@@ -177,6 +178,7 @@ ko.components.register("root-node", {
 		'<button data-bind="click: onLoadTopicModel">TopicModel</button>' +
 		'<button data-bind="click: onLoadMixUnigram">MixUnigram</button>' +
 		'<button data-bind="click: onLoadPhraseList">PhraseList</button>' +
+		'<button data-bind="click: onLoadPhraseDiffList">PhraseDiff</button>' +
 		'<!-- ko if: isTopicModel --><topic-model-summary params="dataModel:dataModel"></topic-model-summary><!-- /ko -->' +
 		'<!-- ko if: isPhraseList --><phrase-list-summary params="dataModel:dataModel"></phrase-list-summary><!-- /ko -->'
 	,
@@ -191,6 +193,7 @@ ko.components.register("root-node", {
 		me.onLoadTopicModel = function () { me.dataModel.reloadJson(me.dataModel.topicModelSummaryJson); };
 		me.onLoadMixUnigram = function () { me.dataModel.reloadJson(me.dataModel.mixUnigramSummaryJson); };
 		me.onLoadPhraseList = function () { me.dataModel.reloadJson(me.dataModel.phraseListSummaryJson); };
+		me.onLoadPhraseDiffList = function () { me.dataModel.reloadJson(me.dataModel.phraseListSummaryDiffJson); };
 
 		me.dataModel.reloadJson(me.dataModel.topicModelSummaryJson);
 	}
