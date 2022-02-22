@@ -71,6 +71,23 @@ phrase-item a {
 	text-decoration: none;
 }
 
+posbigram-summary ul.pos-right-list {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	font-size: 10px;
+}
+
+posbigram-summary ul.pos-left-list {
+	display: flex;
+	flex-direction: column;
+	flex-wrap: nowrap;
+}
+
+posbigram-summary li.pos-left-item.column-title {
+	writing-mode:vertical-rl;
+}
+
 </style>
 <script type='text/javascript' src='https://ajax.aspnetcdn.com/ajax/knockout/knockout-3.5.0.js'></script>
 <script>
@@ -85,8 +102,10 @@ function DataModel()
 	me.topicModelSummaryJson = "topicmodel-summary.json";
 	me.phraseListSummaryJson = "phrase-list-summary.json";
 	me.phraseListSummaryDiffJson = "phrase-list-summary-diff.json";
+	me.posBigramSummaryJson = "pos-bigram-summary.json";
 	me.summaryTypeTopicModel = "topicModel";
 	me.summaryTypePhraseList = "phraseList";
+	me.summaryTypePosBigram = "posBigram";
 
 	// model
 	me.dataModel = ko.observable(null);
@@ -115,10 +134,13 @@ function DataModel()
 		emojis: ko.observableArray([]),
 		personNames: ko.observableArray([]),
 	};
+	me.pb = {
+		posNames: ko.observable([]),
+		posBigram: ko.observableArray([]),
+	}
 
 	me.reloadJson = (jsonUrl) => {
 		me.downloadJson(jsonUrl).then(dataModel => {
-			me.summaryType(dataModel.summaryType);
 			if (dataModel.summaryType === me.summaryTypeTopicModel)
 			{
 				me.dataModel(dataModel);
@@ -129,7 +151,7 @@ function DataModel()
 				me.tps.entropyAverage(dataModel.tps.entropyAverage.toString());
 				me.topicModel(dataModel.topicModel);
 			}
-			else
+			else if (dataModel.summaryType === me.summaryTypePhraseList)
 			{
 				me.dataModel(dataModel);
 				me.generatedTime(dataModel.generatedTime);
@@ -146,6 +168,14 @@ function DataModel()
 				me.pl.emojis(dataModel.emojis);
 				me.pl.personNames(dataModel.personNames);
 			}
+			else if (dataModel.summaryType === me.summaryTypePosBigram)
+			{
+				me.dataModel(dataModel);
+				me.generatedTime(dataModel.generatedTime);
+				me.pb.posNames(dataModel.posOrder);
+				me.pb.posBigram(dataModel.posBigram);
+			}
+			me.summaryType(dataModel.summaryType);
 		});
 	};
 
@@ -179,8 +209,10 @@ ko.components.register("root-node", {
 		'<button data-bind="click: onLoadMixUnigram">MixUnigram</button>' +
 		'<button data-bind="click: onLoadPhraseList">PhraseList</button>' +
 		'<button data-bind="click: onLoadPhraseDiffList">PhraseDiff</button>' +
+		'<button data-bind="click: onLoadPosBigramList">PosBigram</button>' +
 		'<!-- ko if: isTopicModel --><topic-model-summary params="dataModel:dataModel"></topic-model-summary><!-- /ko -->' +
-		'<!-- ko if: isPhraseList --><phrase-list-summary params="dataModel:dataModel"></phrase-list-summary><!-- /ko -->'
+		'<!-- ko if: isPhraseList --><phrase-list-summary params="dataModel:dataModel"></phrase-list-summary><!-- /ko -->' +
+		'<!-- ko if: isPosBigram --><posbigram-summary params="dataModel:dataModel"></posbigram-summary><!-- /ko -->'
 	,
 	viewModel: function (params) {
 		var me = this;
@@ -189,11 +221,13 @@ ko.components.register("root-node", {
 
 		me.isTopicModel = ko.pureComputed(() => (me.dataModel.summaryType() === me.dataModel.summaryTypeTopicModel));
 		me.isPhraseList = ko.pureComputed(() => (me.dataModel.summaryType() === me.dataModel.summaryTypePhraseList));
+		me.isPosBigram = ko.pureComputed(() => (me.dataModel.summaryType() === me.dataModel.summaryTypePosBigram));
 
 		me.onLoadTopicModel = function () { me.dataModel.reloadJson(me.dataModel.topicModelSummaryJson); };
 		me.onLoadMixUnigram = function () { me.dataModel.reloadJson(me.dataModel.mixUnigramSummaryJson); };
 		me.onLoadPhraseList = function () { me.dataModel.reloadJson(me.dataModel.phraseListSummaryJson); };
 		me.onLoadPhraseDiffList = function () { me.dataModel.reloadJson(me.dataModel.phraseListSummaryDiffJson); };
+		me.onLoadPosBigramList = function ()  { me.dataModel.reloadJson(me.dataModel.posBigramSummaryJson); };
 
 		me.dataModel.reloadJson(me.dataModel.topicModelSummaryJson);
 	}
@@ -393,6 +427,45 @@ ko.components.register("phrase-item", {
 		me.url = "https://www.google.com/search?" + queryString;
 	}
 });
+
+ko.components.register("posbigram-summary", {
+	template:
+		'<ul class="pos-right-list">' +
+			'<li class="pos-right-item">' +
+				'<ul class="pos-left-list">' +
+					'<li class="pos-left-item">' +
+						'<span>-</span>' +
+					'</li>' +
+					'<!-- ko foreach: posNames -->' +
+						'<li class="pos-left-item">' +
+							'<span data-bind="text: $data"></span>' +
+						'</li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
+			'<!-- ko foreach: posBigram -->' +
+				'<li class="pos-right-item">' +
+					'<ul class="pos-left-list">' +
+						'<li class="pos-left-item column-title">' +
+							'<span data-bind="text: $component.posNames()[$index()]"></span>' +
+						'</li>' +
+						'<!-- ko foreach: $data -->' +
+							'<li class="pos-left-item">' +
+								'<span data-bind="text: $data"></span>' +
+							'</li>' +
+						'<!-- /ko -->' +
+					'</ul>' +
+				'</li>' +
+			'<!-- /ko -->' +
+		'</ul>'
+	,
+	viewModel: function (params) {
+		var me = this;
+		me.posNames = params.dataModel.pb.posNames;
+		me.posBigram = params.dataModel.pb.posBigram;
+	}
+});
+
 
 window.onload = function () { ko.applyBindings(); }
 })();
