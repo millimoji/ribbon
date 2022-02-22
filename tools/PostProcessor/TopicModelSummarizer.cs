@@ -51,7 +51,7 @@ namespace Ribbon.PostProcessor
             }
             var summary = new JsonType.SummaryStruct();
             summary.generatedTime = DateTime.Now.ToString();
-            summary.summaryType = Constants.summaryTopicModel;
+            summary.summaryType = Constants.summaryTypeTopicModel;
 
             var perplexities = topicModelHandler.loadedPerplexities;
             summary.tps.perplexity = perplexities[0];

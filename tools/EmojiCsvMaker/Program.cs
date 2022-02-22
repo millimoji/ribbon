@@ -23,8 +23,8 @@ namespace EmojiCsvMaker
 
     class EmojiCsvMaker
     {
-        static string emojiPos = ",5,5,8196,記号,絵文字,*,*,*,*,*,";
-        static string emojiPosUnq = ",5,5,9196,記号,絵文字,*,*,*,*,*,";
+        static string emojiPos = ",5,5,8196,記号,絵文字,*,*,*,*,";
+        static string emojiPosUnq = ",5,5,9196,記号,絵文字,*,*,*,*,";
         static string emojiReading = ",エモジ,エモジ";
 
         string sourceDir;

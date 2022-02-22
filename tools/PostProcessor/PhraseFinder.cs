@@ -82,7 +82,7 @@ namespace Ribbon.PostProcessor
 
             var phraseSummary = new PhraseSummary();
             phraseSummary.generatedTime = DateTime.Now.ToString();
-            phraseSummary.summaryType = Constants.summaryPhraseList;
+            phraseSummary.summaryType = Constants.summaryTypePhraseList;
 
             var sortedAllPhrases = scoredPhraseList
                 .OrderByDescending(x => x.Item1)

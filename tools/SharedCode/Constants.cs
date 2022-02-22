@@ -26,12 +26,15 @@ namespace Ribbon
         public const string phraseListSummary = "phrase-list-summary.json";
         public const string phraseListSummaryDiff = "phrase-list-summary-diff.json";
 
+        public const string posBigramSummary = "pos-bigram-summary.json";
+
         public const string old3prefix = "old3-";
         public const string old2prefix = "old2-";
         public const string old1prefix = "old-";
 
-        public const string summaryTopicModel = "topicModel";
-        public const string summaryPhraseList = "phraseList";
+        public const string summaryTypeTopicModel = "topicModel";
+        public const string summaryTypePhraseList = "phraseList";
+        public const string summaryTypePosBigram = "posBigram";
 
         public const int maxUrlsToAddOnceTime = 100;
     }

@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="PhraseDiffMaker.cs" />
     <Compile Include="PhraseFinder.cs" />
+    <Compile Include="PosListMaker.cs" />
     <Compile Include="PostProcessor.cs" />
     <Compile Include="TopicModelSummarizer.cs" />
     <Compile Include="Program.cs" />

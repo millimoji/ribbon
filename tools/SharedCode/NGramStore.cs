@@ -24,6 +24,7 @@ namespace Ribbon.Shared
             new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
             new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
         };
+        Dictionary<Tuple<string, string>, long> m_posBigram;
 
         const int thresholdToDiv2 = 4000000; // n7gram max
         const string BOS = "[BOS]";
@@ -35,7 +36,8 @@ namespace Ribbon.Shared
         const string n5gramFileName = "n5gram.txt";
         const string n6gramFileName = "n6gram.txt";
         const string n7gramFileName = "n7gram.txt";
-        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName,
+        const string posBigramFilename = "posbigram.txt";
+        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName, posBigramFilename,
             Constants.topicModelFileName, Constants.topicModelSummaryFilename, Constants.mixUnigramlFileName, Constants.mixUnigramSummaryFilename };
         const string doHalfFileName = "dohalf";
 
@@ -55,6 +57,7 @@ namespace Ribbon.Shared
             m_mixUnigram = new TopicModelHandler(true /* isMixUnigram */);
         }
         public Dictionary<Tuple<int, int, int, int, int, int, int>, long>[] nGramList { get { return this.m_nGrams;  } }
+        public Dictionary<Tuple<string, string>, long> posBigram { get { return m_posBigram; } }
 
         public bool ShouldFlush()
         {
@@ -91,6 +94,14 @@ namespace Ribbon.Shared
                     }
                 }
             }
+            using (StreamWriter fileStream = new StreamWriter(m_workDir + posBigramFilename, false, Encoding.Unicode))
+            {
+                foreach (var item in m_posBigram)
+                {
+                    var outputLine = $"{item.Key.Item1}\t{item.Key.Item2}\t{item.Value}";
+                    fileStream.WriteLine(outputLine);
+                }
+            }
 
             m_topicModel.SaveToFile(m_workDir + Constants.topicModelFileName, m_workDir + Constants.topicModelSummaryFilename, (int id) => this.WordList[id]);
             m_mixUnigram.SaveToFile(m_workDir + Constants.mixUnigramlFileName, m_workDir + Constants.mixUnigramSummaryFilename, (int id) => this.WordList[id]);
@@ -118,6 +129,7 @@ namespace Ribbon.Shared
                 new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
                 new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
                 };
+            this.m_posBigram = new Dictionary<Tuple<string, string>, long>();
             //
 
             for (int nGram = 1; nGram <= Constants.maxNGram; ++nGram)
@@ -174,6 +186,33 @@ namespace Ribbon.Shared
                 catch (Exception) { }
             }
 
+            try
+            {
+                using (StreamReader fileStream = new StreamReader(m_workDir + posBigramFilename))
+                {
+                    string line;
+                    while ((line = fileStream.ReadLine()) != null)
+                    {
+                        string[] fields = line.Split('\t');
+                        long bigramCount = 0;
+                        if (!long.TryParse(fields[2], out bigramCount))
+                        {
+                            continue;
+                        }
+                        if (divNum > 0)
+                        {
+                            bigramCount = bigramCount / divNum;
+                            if (bigramCount == 0)
+                            {
+                                continue;
+                            }
+                        }
+                        this.m_posBigram.Add(new Tuple<string, string>(fields[0], fields[1]), bigramCount);
+                    }
+                }
+            }
+            catch (Exception) { }
+
             this.m_topicModel.LoadFromFile(this.m_workDir + Constants.topicModelFileName,
                 (string word) => this.WordToWordId(word, false),
                 (int id) => this.WordList[id]);
@@ -214,6 +253,8 @@ namespace Ribbon.Shared
                 if (remained >= 2) { AddNgram(2, shiftKeyList, 1); }
                 if (remained >= 1) { AddNgram(1, shiftKeyList, 1); }
             }
+
+            this.AddPosBigram(arrayOfWord);
 
             m_topicModel.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
             m_mixUnigram.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
@@ -287,8 +328,41 @@ namespace Ribbon.Shared
                 targetHash.Add(hashKey, hashKeyValue);
             }
         }
-    }
 
+        Regex needToHaveDisplay = new Regex(@",助詞,|,助動詞,|^お,接頭詞,|^ご,接頭詞,|^御,接頭詞,");
+
+        void AddPosBigram(List<string> wordArray)
+        {
+            var lastPos = "[BOS]";
+            for (int i = 0; i <= wordArray.Count; ++i)
+            {
+                string curPos;
+                if (i == wordArray.Count)
+                {
+                    curPos = "[EOS]";
+                }
+                else if (needToHaveDisplay.IsMatch(wordArray[i]))
+                {
+                    // 0:Display, 1-6:Pos, 7:BaseDsiplay, 8:Reading, 9:Voice Rading 
+                    curPos = String.Join(",", wordArray[i].Split(',').Take(7)); // use display
+                }
+                else
+                {
+                    curPos = "*," + String.Join(",", wordArray[i].Split(',').Skip(1).Take(6)); // display is *
+                }
+                var key = new Tuple<string, string>(lastPos, curPos);
+                if (this.m_posBigram.ContainsKey(key))
+                {
+                    this.m_posBigram[key] += 1;
+                }
+                else
+                {
+                    this.m_posBigram.Add(key, 1);
+                }
+                lastPos = curPos;
+            }
+        }
+    }
 
     public class MorphAnalyzer
     {
@@ -945,8 +1019,8 @@ namespace Ribbon.Shared
         };
 
         static string posNum31 = ",名詞,数,３１,*,*,*,";        // month, hour, date or small number, japanese year
-        static string posNum999 = ",名詞,数,９９９,*,*,";     // min, sec, day or countable
-        static string posNumBig = ",名詞,数,大,*,*,";        // year, price
+        static string posNum999 = ",名詞,数,９９９,*,*,*,";     // min, sec, day or countable
+        static string posNumBig = ",名詞,数,大,*,*,*,";        // year, price
         
         // 0:DIsplay, 1:POS1, 2:POS2, 3:POS3, 4:POS4, 5:POS5, 6:POS6, 7:Display, 8:Reading: 9:Speachi
 

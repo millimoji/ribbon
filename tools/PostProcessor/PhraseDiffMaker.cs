@@ -23,7 +23,7 @@ namespace Ribbon.PostProcessor
 
             var diffSummary = new PhraseSummary();
             diffSummary.generatedTime = $"{oldSummary.generatedTime} => {newSummary.generatedTime}";
-            diffSummary.summaryType = Constants.summaryPhraseList;
+            diffSummary.summaryType = Constants.summaryTypePhraseList;
 
             diffSummary.phraseList = this.MakeDiff(newSummary.phraseList, oldSummary.phraseList);
             diffSummary.unknownPhrase = this.MakeDiff(newSummary.unknownPhrase, oldSummary.unknownPhrase);

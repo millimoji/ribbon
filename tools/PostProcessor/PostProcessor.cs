@@ -17,11 +17,15 @@ namespace Ribbon.PostProcessor
                 Constants.phraseList,
                 Constants.phraseListSummary,
                 Constants.phraseListSummaryDiff,
+                Constants.posBigramSummary,
             };
             Shared.FileOperation.SlideDataFile(targetFiles, Constants.workingFolder);
 
             var nGramStore = new Shared.NGramStore(Constants.workingFolder);
             var totalCounts = nGramStore.LoadFromFile(1, 10);
+
+            var posListMaker = new PosListMaker(Constants.workingFolder);
+            posListMaker.OutputPosBigram(nGramStore);
 
             this.FindPhraseAndSave(nGramStore, totalCounts);
 
