@@ -257,7 +257,7 @@ namespace Ribbon.WebCrawler
             }
             catch (Exception ex)
             {
-                Shared.Logger.Log("SubmitChanges() is failed: ex.ToString()");
+                Shared.Logger.Log($"SubmitChanges() is failed: {ex.ToString()}");
                 Recoonect();
             }
         }
