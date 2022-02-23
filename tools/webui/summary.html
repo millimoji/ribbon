@@ -74,17 +74,17 @@ phrase-item a {
 posbigram-summary {
 	font-size: 11px;
 }
-posbigram-summary posbigram-table table thead tr th {
-	text-align: end;
+posbigram-summary table thead tr th {
+	text-align: start;
 	writing-mode: vertical-rl;
 }
 
-posbigram-summary posbigram-table table tbody tr td.row-head {
+posbigram-summary table tbody tr td.row-head {
 	text-align: center;
 }
 
-posbigram-summary posbigram-table table tbody tr td.row-head {
-	text-align: right;
+posbigram-summary table tbody tr td.row-head {
+	text-align: left;
 }
 
 
@@ -431,13 +431,37 @@ ko.components.register("phrase-item", {
 
 ko.components.register("posbigram-summary", {
 	template:
-		'<posbigram-table params="columnPos: posTree, rowPos: posTree, posBigram: posBigram">' +
-		'</posbigram-table>'
+		'<button data-bind="click: onCloseAll">close all</button>' +
+		'<table>' +
+			'<thead>' +
+				'<tr>' +
+					'<th>-</th>' +
+					'<!-- ko foreach: $component.columnList -->' +
+						'<th data-bind="text: $component.GetLabel($data), click: $component.onClickColumn.bind($component, $data)"></th>' +
+					'<!-- /ko -->' +
+				'</tr>' +
+			'</thead>' +
+			'<tbody>' +
+				'<!-- ko foreach: $component.rowList -->' +
+					'<tr>' +
+						'<td class="row-head" data-bind="text: $component.GetLabel($data), click: $component.onClickRow.bind($component, $data)"></td>' +
+						'<!-- ko foreach: $component.columnList -->' +
+							'<td data-bind="text: $component.GetCellValue($parent, $data), click: $component.onClickCell.bind($component, $parent, $data)"></td>' +
+						'<!-- /ko -->' +
+					'</tr>' +
+				'<!-- /ko -->' +
+			'</tbody>' +
+		'</table>'
 	,
 	viewModel: function (params) {
 		let me = this;
 		me.posTree = {};
+		me.posNames = params.dataModel.pb.posNames;
+		me.posBigram = params.dataModel.pb.posBigram();
+
 		me.posTree.children = new Map();
+		me.posTree.isColumnOpened = ko.observable(true);
+		me.posTree.isRowOpened = ko.observable(true);
 
 		let posNames = params.dataModel.pb.posNames();
 		for (let i = 0; i < posNames.length; ++i) {
@@ -456,72 +480,58 @@ ko.components.register("posbigram-summary", {
 					let node = {
 						text: posLongText,
 						indice: [],
+						parent: parentNode,
 						children: new Map(),
+						descendCount: 0,
+						isColumnOpened: ko.observable(false),
+						isRowOpened: ko.observable(false),
 					};
 					parentNode.children.set(posText, node);
 				}
 				let currentNode = parentNode.children.get(posText);
 				currentNode.indice.push(i);
+				currentNode.descendCount++;
 				parentNode = currentNode;
 			}
 		}
 
-		me.posNames = params.dataModel.pb.posNames;
-		me.posBigram = params.dataModel.pb.posBigram();
-	}
-});
-
-ko.components.register("posbigram-table", {
-	template:
-		'<table>' +
-			'<thead>' +
-				'<tr>' +
-					'<th>-</th>' +
-					'<!-- ko foreach: Array.from($component.columnPos.children.values()) -->' +
-						'<th data-bind="text: $data.text"></th>' +
-					'<!-- /ko -->' +
-				'</tr>' +
-			'</thead>' +
-			'<tbody>' +
-				'<!-- ko foreach: Array.from($component.rowPos.children.values()) -->' +
-					'<tr>' +
-						'<td class="row-head" data-bind="text: $data.text"></td>' +
-						'<!-- ko foreach: Array.from($component.columnPos.children.values()) -->' +
-							'<!-- ko if: ($component.isOpenedArray.get($parent.text + "-" + $data.text)()) -->' +
-								'<td>' +
-									'<posbigram-table params="columnPos: $data, rowPos: $parent, posBigram: $component.posBigram">' +
-									'</posbigram-table>' +
-								'</td>' +
-							'<!-- /ko -->' +
-							'<!-- ko if: !($component.isOpenedArray.get($parent.text + "-" + $data.text)()) -->' +
-								'<td data-bind="text: $component.GetNumber($parent, $data), click: $component.onClick.bind($component, $parent, $data)"></td>' +
-							'<!-- /ko -->' +
-						'<!-- /ko -->' +
-					'</tr>' +
-				'<!-- /ko -->' +
-			'</tbody>' +
-		'</table>'
-	,
-	viewModel: function (params) {
-		let me = this;
-
-		me.posBigram = params.posBigram;
-		me.columnPos = params.columnPos;
-		me.rowPos = params.rowPos;
-
-		me.isOpenedArray = new Map();
-		for (const rowItem of Array.from(me.rowPos.children.values())) {
-			for (const columnItem of Array.from(me.columnPos.children.values())) {
-				me.isOpenedArray.set(rowItem.text + "-" + columnItem.text, ko.observable(false));
+		me.columnList = ko.pureComputed(() => {
+			let makeList = (node) => {
+				let nodeList = [];
+				for (const child of node.children.values()) {
+					if (child.isColumnOpened()) {
+						nodeList = nodeList.concat(makeList(child));
+					}
+					else
+					{
+						nodeList.push(child);
+					}
+				}
+				return nodeList;
 			}
-		}
+			return makeList(me.posTree);
+		});
+		me.rowList = ko.pureComputed(() => {
+			let makeList = (node) => {
+				let nodeList = [];
+				for (const child of node.children.values()) {
+					if (child.isRowOpened()) {
+						nodeList = nodeList.concat(makeList(child));
+					}
+					else
+					{
+						nodeList.push(child);
+					}
+				}
+				return nodeList;
+			}
+			return makeList(me.posTree);
+		});
 
-		me.onClick = function(rowPosNode, columnPosNode) {
-			let isOpened = me.isOpenedArray.get(rowPosNode.text + "-" + columnPosNode.text);
-			isOpened(!isOpened());
-		}
-
-		me.GetNumber = function(leftPos, rightPos) {
+		me.GetLabel = (posNode) => {
+			return posNode.text + "(" + posNode.descendCount.toString() + ")";
+		};
+		me.GetCellValue = (leftPos, rightPos) => {
 			let sum = 0;
 			let hasConnection = false;
 			let hasNoConnection = false;
@@ -534,6 +544,39 @@ ko.components.register("posbigram-table", {
 			return (hasConnection && !hasNoConnection) ? "○"
 					: (!hasConnection && hasNoConnection) ? "-"
 					: (hasConnection && hasNoConnection) ? "?" : "??";
+		};
+
+		me.onClickColumn = (posNode) => {
+			if (posNode.descendCount > 1) {
+				posNode.isColumnOpened(true);
+			} else if (posNode.parent != me.posTree) {
+				posNode.parent.isColumnOpened(false);
+			}
+		};
+		me.onClickRow = (posNode) => {
+			if (posNode.descendCount > 1) {
+				posNode.isRowOpened(true);
+			} else if (posNode.parent != me.posTree) {
+				posNode.parent.isRowOpened(false);
+			}
+		};
+		me.onClickCell = (leftNode, rightNode) => {
+			if (leftNode.descendCount > 1) {
+				leftNode.isRowOpened(true);
+			}
+			if (rightNode.descendCount > 1) {
+				rightNode.isColumnOpened(true);
+			}
+		};
+		me.onCloseAll = () => {
+			let closeAllRecv = (node) => {
+				for (const child of node.children.values()) {
+					child.isColumnOpened(false);
+					child.isRowOpened(false);
+					closeAllRecv(child);
+				}
+			}
+			closeAllRecv(me.posTree);
 		};
 	}
 });
