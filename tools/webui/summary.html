@@ -71,22 +71,23 @@ phrase-item a {
 	text-decoration: none;
 }
 
-posbigram-summary ul.pos-right-list {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-	font-size: 10px;
+posbigram-summary {
+	font-size: 11px;
+}
+posbigram-summary posbigram-table table thead tr th {
+	text-align: end;
+	writing-mode: vertical-rl;
 }
 
-posbigram-summary ul.pos-left-list {
-	display: flex;
-	flex-direction: column;
-	flex-wrap: nowrap;
+posbigram-summary posbigram-table table tbody tr td.row-head {
+	text-align: center;
 }
 
-posbigram-summary li.pos-left-item.column-title {
-	writing-mode:vertical-rl;
+posbigram-summary posbigram-table table tbody tr td.row-head {
+	text-align: right;
 }
+
+
 
 </style>
 <script type='text/javascript' src='https://ajax.aspnetcdn.com/ajax/knockout/knockout-3.5.0.js'></script>
@@ -95,7 +96,7 @@ posbigram-summary li.pos-left-item.column-title {
 
 function DataModel()
 {
-	var me = this;
+	let me = this;
 
 	// const
 	me.mixUnigramSummaryJson = "mixunigram-summary.json";
@@ -181,12 +182,12 @@ function DataModel()
 
 	me.downloadJson = function (url) {
 		return new Promise((resolve, reject) => {
-			var xmlHttp = new XMLHttpRequest();
+			let xmlHttp = new XMLHttpRequest();
 			xmlHttp.onload = function() {
-				var jsonResult = JSON.parse(xmlHttp.responseText);
+				let jsonResult = JSON.parse(xmlHttp.responseText);
 				if (typeof jsonResult.error !== "undefined") {
-					var errorCode = (typeof jsonResult.code !== "undefined") ? (jsonResult.code.toString() + ": ") : "";
-					var errorText = errorCode + jsonResult.error;
+					let errorCode = (typeof jsonResult.code !== "undefined") ? (jsonResult.code.toString() + ": ") : "";
+					let errorText = errorCode + jsonResult.error;
 					reject(errorText);
 				} else {
 					resolve(JSON.parse(xmlHttp.responseText));
@@ -215,7 +216,7 @@ ko.components.register("root-node", {
 		'<!-- ko if: isPosBigram --><posbigram-summary params="dataModel:dataModel"></posbigram-summary><!-- /ko -->'
 	,
 	viewModel: function (params) {
-		var me = this;
+		let me = this;
 		me.dataModel = new DataModel();
 		me.generatedTime = me.dataModel.generatedTime;
 
@@ -246,7 +247,7 @@ ko.components.register("topic-model-summary", {
 		'</div>'
 	,
 	viewModel: function (params) {
-		var me = this;
+		let me = this;
 		me.topicModel = params.dataModel.topicModel;
 		me.perplexity = params.dataModel.tps.perplexity;
 		me.latestPerplexity = params.dataModel.tps.latestPerplexity;
@@ -265,7 +266,7 @@ ko.components.register("topic-word-list", {
 		'</ul>'
 	,
 	viewModel: function (params) {
-		var me = this;
+		let me = this;
 		me.wordList = params.wordList;
 		me.title = (params.index() == 0) ? "Low Entropy" :
 					(params.index() == 1) ? "Low P * Entropy" :
@@ -278,8 +279,8 @@ ko.components.register("topic-word-list", {
 ko.components.register("word-prob", {
 	template: '<span data-bind="text: wordText"></span>',
 	viewModel: function (params) {
-		var me = this;
-		var wordProps = params.wp.w.split(",");
+		let me = this;
+		let wordProps = params.wp.w.split(",");
 		me.wordText = wordProps[0] + "/" + wordProps[1];
 	}
 });
@@ -386,7 +387,7 @@ ko.components.register("phrase-list-summary", {
 		'</ul>'
 	,
 	viewModel: function (params) {
-		var me = this;
+		let me = this;
 		me.phraseList = params.dataModel.pl.phraseList;
 		me.katakanaPhrase = params.dataModel.pl.katakanaPhrase;
 		me.unknownPhrase = params.dataModel.pl.unknownPhrase;
@@ -409,12 +410,12 @@ ko.components.register("phrase-item", {
 		'</a>'
 	,
 	viewModel: function (params) {
-		var me = this;
-		var reIsValid = new RegExp("\\*,\\*$|,フィラー,");
-		var textOnly = "";
+		let me = this;
+		let reIsValid = new RegExp("\\*,\\*$|,フィラー,");
+		let textOnly = "";
 		me.words = params.ph.w.map(x => {
-			var isInValid = (reIsValid.exec(x) != null);
-			var displayText = x.split(",")[0];
+			let isInValid = (reIsValid.exec(x) != null);
+			let displayText = x.split(",")[0];
 			textOnly += displayText;
 			return {
 				pos: x,
@@ -423,18 +424,18 @@ ko.components.register("phrase-item", {
 			};
 		});
 		me.count = params.ph.c;
-		var queryString = new URLSearchParams({ q: textOnly }).toString()
+		let queryString = new URLSearchParams({ q: textOnly }).toString()
 		me.url = "https://www.google.com/search?" + queryString;
 	}
 });
 
 ko.components.register("posbigram-summary", {
 	template:
-		'<posbigram-table params="columnPos: posTree, rowPos: posTree, posBigram: posBigram()">' +
+		'<posbigram-table params="columnPos: posTree, rowPos: posTree, posBigram: posBigram">' +
 		'</posbigram-table>'
 	,
 	viewModel: function (params) {
-		var me = this;
+		let me = this;
 		me.posTree = {};
 		me.posTree.children = new Map();
 
@@ -466,7 +467,7 @@ ko.components.register("posbigram-summary", {
 		}
 
 		me.posNames = params.dataModel.pb.posNames;
-		me.posBigram = params.dataModel.pb.posBigram;
+		me.posBigram = params.dataModel.pb.posBigram();
 	}
 });
 
@@ -484,9 +485,17 @@ ko.components.register("posbigram-table", {
 			'<tbody>' +
 				'<!-- ko foreach: Array.from($component.rowPos.children.values()) -->' +
 					'<tr>' +
-						'<td data-bind="text: $data.text"></td>' +
+						'<td class="row-head" data-bind="text: $data.text"></td>' +
 						'<!-- ko foreach: Array.from($component.columnPos.children.values()) -->' +
-							'<td data-bind="text: $component.GetNumber($parent, $data)"></td>' +
+							'<!-- ko if: ($component.isOpenedArray.get($parent.text + "-" + $data.text)()) -->' +
+								'<td>' +
+									'<posbigram-table params="columnPos: $data, rowPos: $parent, posBigram: $component.posBigram">' +
+									'</posbigram-table>' +
+								'</td>' +
+							'<!-- /ko -->' +
+							'<!-- ko if: !($component.isOpenedArray.get($parent.text + "-" + $data.text)()) -->' +
+								'<td data-bind="text: $component.GetNumber($parent, $data), click: $component.onClick.bind($component, $parent, $data)"></td>' +
+							'<!-- /ko -->' +
 						'<!-- /ko -->' +
 					'</tr>' +
 				'<!-- /ko -->' +
@@ -495,19 +504,36 @@ ko.components.register("posbigram-table", {
 	,
 	viewModel: function (params) {
 		let me = this;
-		let posBigram = params.posBigram();
 
+		me.posBigram = params.posBigram;
 		me.columnPos = params.columnPos;
 		me.rowPos = params.rowPos;
 
+		me.isOpenedArray = new Map();
+		for (const rowItem of Array.from(me.rowPos.children.values())) {
+			for (const columnItem of Array.from(me.columnPos.children.values())) {
+				me.isOpenedArray.set(rowItem.text + "-" + columnItem.text, ko.observable(false));
+			}
+		}
+
+		me.onClick = function(rowPosNode, columnPosNode) {
+			let isOpened = me.isOpenedArray.get(rowPosNode.text + "-" + columnPosNode.text);
+			isOpened(!isOpened());
+		}
+
 		me.GetNumber = function(leftPos, rightPos) {
-			var sum = 0;
+			let sum = 0;
+			let hasConnection = false;
+			let hasNoConnection = false;
 			for (const x of leftPos.indice) {
 				for (const y of rightPos.indice) {
-					sum += posBigram[y][x];
+					hasConnection = hasConnection || (me.posBigram[x][y] > 0);
+					hasNoConnection = hasNoConnection || (me.posBigram[x][y] < 0);
 				}
 			}
-			return sum;
+			return (hasConnection && !hasNoConnection) ? "○"
+					: (!hasConnection && hasNoConnection) ? "-"
+					: (hasConnection && hasNoConnection) ? "?" : "??";
 		};
 	}
 });
