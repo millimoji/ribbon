@@ -430,42 +430,87 @@ ko.components.register("phrase-item", {
 
 ko.components.register("posbigram-summary", {
 	template:
-		'<ul class="pos-right-list">' +
-			'<li class="pos-right-item">' +
-				'<ul class="pos-left-list">' +
-					'<li class="pos-left-item">' +
-						'<span>-</span>' +
-					'</li>' +
-					'<!-- ko foreach: posNames -->' +
-						'<li class="pos-left-item">' +
-							'<span data-bind="text: $data"></span>' +
-						'</li>' +
-					'<!-- /ko -->' +
-				'</ul>' +
-			'</li>' +
-			'<!-- ko foreach: posBigram -->' +
-				'<li class="pos-right-item">' +
-					'<ul class="pos-left-list">' +
-						'<li class="pos-left-item column-title">' +
-							'<span data-bind="text: $component.posNames()[$index()]"></span>' +
-						'</li>' +
-						'<!-- ko foreach: $data -->' +
-							'<li class="pos-left-item">' +
-								'<span data-bind="text: $data"></span>' +
-							'</li>' +
-						'<!-- /ko -->' +
-					'</ul>' +
-				'</li>' +
-			'<!-- /ko -->' +
-		'</ul>'
+		'<posbigram-table params="columnPos: posTree, rowPos: posTree, posBigram: posBigram()">' +
+		'</posbigram-table>'
 	,
 	viewModel: function (params) {
 		var me = this;
+		me.posTree = {};
+		me.posTree.children = new Map();
+
+		let posNames = params.dataModel.pb.posNames();
+		for (let i = 0; i < posNames.length; ++i) {
+			let posName = posNames[i];
+			let posFields = posName.split(',');
+
+			let parentNode = me.posTree;
+			let posLongText = "";
+			for (let j = 0; j < 7; ++j)
+			{
+				let posText = posFields[Math.min((j + 1) % 7, posFields.length - 1)];
+				posLongText = (j == 0) ? posText : (posLongText + "," + posText);
+
+				if (!parentNode.children.has(posText))
+				{
+					let node = {
+						text: posLongText,
+						indice: [],
+						children: new Map(),
+					};
+					parentNode.children.set(posText, node);
+				}
+				let currentNode = parentNode.children.get(posText);
+				currentNode.indice.push(i);
+				parentNode = currentNode;
+			}
+		}
+
 		me.posNames = params.dataModel.pb.posNames;
 		me.posBigram = params.dataModel.pb.posBigram;
 	}
 });
 
+ko.components.register("posbigram-table", {
+	template:
+		'<table>' +
+			'<thead>' +
+				'<tr>' +
+					'<th>-</th>' +
+					'<!-- ko foreach: Array.from($component.columnPos.children.values()) -->' +
+						'<th data-bind="text: $data.text"></th>' +
+					'<!-- /ko -->' +
+				'</tr>' +
+			'</thead>' +
+			'<tbody>' +
+				'<!-- ko foreach: Array.from($component.rowPos.children.values()) -->' +
+					'<tr>' +
+						'<td data-bind="text: $data.text"></td>' +
+						'<!-- ko foreach: Array.from($component.columnPos.children.values()) -->' +
+							'<td data-bind="text: $component.GetNumber($parent, $data)"></td>' +
+						'<!-- /ko -->' +
+					'</tr>' +
+				'<!-- /ko -->' +
+			'</tbody>' +
+		'</table>'
+	,
+	viewModel: function (params) {
+		let me = this;
+		let posBigram = params.posBigram();
+
+		me.columnPos = params.columnPos;
+		me.rowPos = params.rowPos;
+
+		me.GetNumber = function(leftPos, rightPos) {
+			var sum = 0;
+			for (const x of leftPos.indice) {
+				for (const y of rightPos.indice) {
+					sum += posBigram[y][x];
+				}
+			}
+			return sum;
+		};
+	}
+});
 
 window.onload = function () { ko.applyBindings(); }
 })();
