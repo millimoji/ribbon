@@ -1,6 +1,7 @@
-<!DOCTYPE html>
+f<!DOCTYPE html>
 <html>
-<head>
+<head lang="ja">
+<meta charset="utf-8"/>
 <!--
 "c:\Program Files\Google\Chrome\Application\chrome.exe" --allow-file-access-from-files file:///D:/Git/ribbon/tools/webui/summary.html
 -->
@@ -80,13 +81,13 @@ posbigram-summary table thead tr th {
 }
 
 posbigram-summary table tbody tr td.row-head {
-	text-align: center;
-}
-
-posbigram-summary table tbody tr td.row-head {
 	text-align: left;
 }
 
+posbigram-summary button.open-close {
+	padding: 0;
+	border-width: 1px;
+}
 
 
 </style>
@@ -437,14 +438,22 @@ ko.components.register("posbigram-summary", {
 				'<tr>' +
 					'<th>-</th>' +
 					'<!-- ko foreach: $component.columnList -->' +
-						'<th data-bind="text: $component.GetLabel($data), click: $component.onClickColumn.bind($component, $data)"></th>' +
+						'<th>' +
+							'<button class="open-close" data-bind="click: $component.onClickColumn.bind($component, $data, 1)">&#x2795;</button>' +
+							'<button class="open-close" data-bind="click: $component.onClickColumn.bind($component, $data, -1)">&#x2796;</button>' +
+							'<span  data-bind="text: $component.GetLabel($data)"></span>' +
+						'</th>' +
 					'<!-- /ko -->' +
 				'</tr>' +
 			'</thead>' +
 			'<tbody>' +
 				'<!-- ko foreach: $component.rowList -->' +
 					'<tr>' +
-						'<td class="row-head" data-bind="text: $component.GetLabel($data), click: $component.onClickRow.bind($component, $data)"></td>' +
+						'<td>' +
+							'<button class="open-close" data-bind="click: $component.onClickRow.bind($component, $data, 1)">&#x2795;</button>' +
+							'<button class="open-close" data-bind="click: $component.onClickRow.bind($component, $data, -1)">&#x2796;</button>' +
+							'<span  data-bind="text: $component.GetLabel($data)"></span>' +
+						'</td>' +
 						'<!-- ko foreach: $component.columnList -->' +
 							'<td data-bind="text: $component.GetCellValue($parent, $data), click: $component.onClickCell.bind($component, $parent, $data)"></td>' +
 						'<!-- /ko -->' +
@@ -541,22 +550,22 @@ ko.components.register("posbigram-summary", {
 					hasNoConnection = hasNoConnection || (me.posBigram[x][y] < 0);
 				}
 			}
-			return (hasConnection && !hasNoConnection) ? "○"
-					: (!hasConnection && hasNoConnection) ? "-"
-					: (hasConnection && hasNoConnection) ? "?" : "??";
+			return (hasConnection && !hasNoConnection) ? "\uD83D\uDFE2"
+					: (!hasConnection && hasNoConnection) ? "\u274C"
+					: (hasConnection && hasNoConnection) ? "\u26A0\uFE0F" : "??";
 		};
 
-		me.onClickColumn = (posNode) => {
-			if (posNode.descendCount > 1) {
+		me.onClickColumn = (posNode, openClose) => {
+			if (openClose > 0 && posNode.descendCount > 1) {
 				posNode.isColumnOpened(true);
-			} else if (posNode.parent != me.posTree) {
+			} else if (openClose < 0 && posNode.parent != me.posTree) {
 				posNode.parent.isColumnOpened(false);
 			}
 		};
-		me.onClickRow = (posNode) => {
-			if (posNode.descendCount > 1) {
+		me.onClickRow = (posNode, openClose) => {
+			if (openClose > 0 && posNode.descendCount > 1) {
 				posNode.isRowOpened(true);
-			} else if (posNode.parent != me.posTree) {
+			} else if (openClose < 0 && posNode.parent != me.posTree) {
 				posNode.parent.isRowOpened(false);
 			}
 		};
