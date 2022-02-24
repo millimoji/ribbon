@@ -201,11 +201,7 @@ namespace Ribbon.Shared
                         }
                         if (divNum > 0)
                         {
-                            bigramCount = bigramCount / divNum;
-                            if (bigramCount == 0)
-                            {
-                                continue;
-                            }
+                            bigramCount = Math.Max(bigramCount / divNum, 1);
                         }
                         this.m_posBigram.Add(new Tuple<string, string>(fields[0], fields[1]), bigramCount);
                     }
