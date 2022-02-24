@@ -329,7 +329,7 @@ namespace Ribbon.Shared
             }
         }
 
-        Regex needToHaveDisplay = new Regex(@",助詞,|,助動詞,|^お,接頭詞,|^ご,接頭詞,|^御,接頭詞,");
+        Regex needToHaveDisplay = new Regex(@"^[^,]+,助詞,|^[^,]+,助動詞,|^お,接頭詞,|^ご,接頭詞,|^御,接頭詞,");
 
         void AddPosBigram(List<string> wordArray)
         {
