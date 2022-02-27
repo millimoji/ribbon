@@ -16,6 +16,7 @@ copy /y user.csv      %MECABDICTDIR%
 copy /y overwrite.csv %MECABDICTDIR%
 copy /y unk.def       %MECABDICTDIR%
 copy /y all-emoji.csv %MECABDICTDIR%
+copy /y overwrite-auxil.csv %MECABDICTDIR%\auxil.csv
 
 cd /d  "c:\Program Files (x86)\MeCab\dic\ipadic"
 
