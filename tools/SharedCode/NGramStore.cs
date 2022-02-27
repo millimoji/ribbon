@@ -657,6 +657,12 @@ namespace Ribbon.Shared
             { "&rarr;", "→" },
             { "&quot;", "\"" },
             { "&hellip;", "…" },
+            // direction control
+            { "\u202A", "" }, // LEFT-TO-RIGHT EMBEDDING
+            { "\u202B", "" }, // RIGHT-TO-LEFT EMBEDDING
+            { "\u202C", "" }, // POP DIRECTIONAL FORMATTING
+            { "\u2061", "" }, // Function Application ??
+            { "\u2062", "" }, // Invisible Times ??
             // Wrong?
             { "ゔ", "ゔ" }, // for 3099 or 309a
             { "が", "が" }, { "ぎ", "ぎ" }, { "ぐ", "ぐ" }, { "げ", "げ" }, { "ご", "ご" },
@@ -695,9 +701,12 @@ namespace Ribbon.Shared
             { "步", "歩" },
             // normalize symbol
             { " ", "\u3000" },    // 20
+            { "\u2028", "\u3000" },
+            { "\u2800", "\u3000" },
             { "—", "－" },    // 2014
             { "–", "－" },    // 2013
             { "−", "－" },    // 2212
+            { "\u2026", "－" },    // 2026
             { "•", "・" },   // 2022
             // 康熙字典部首 KANGXI RADICAL
             // 【1画】

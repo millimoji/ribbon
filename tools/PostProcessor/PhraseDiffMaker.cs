@@ -37,6 +37,7 @@ namespace Ribbon.PostProcessor
             diffSummary.numbers = this.MakeDiff(newSummary.numbers, oldSummary.numbers);
             diffSummary.emojis = this.MakeDiff(newSummary.emojis, oldSummary.emojis);
             diffSummary.personNames = this.MakeDiff(newSummary.personNames, oldSummary.personNames);
+            diffSummary.combinedChars = this.MakeDiff(newSummary.combinedChars, oldSummary.combinedChars);
 
             using (var fs = File.Create(this.workDir + Constants.phraseListSummaryDiff))
             {
