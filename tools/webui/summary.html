@@ -135,6 +135,7 @@ function DataModel()
 		numbers: ko.observableArray([]),
 		emojis: ko.observableArray([]),
 		personNames: ko.observableArray([]),
+		combinedChars: ko.observableArray([]),
 	};
 	me.pb = {
 		posNames: ko.observable([]),
@@ -169,6 +170,7 @@ function DataModel()
 				me.pl.numbers(dataModel.numbers);
 				me.pl.emojis(dataModel.emojis);
 				me.pl.personNames(dataModel.personNames);
+				me.pl.combinedChars(dataModel.combinedChars);
 			}
 			else if (dataModel.summaryType === me.summaryTypePosBigram)
 			{
@@ -385,6 +387,14 @@ ko.components.register("phrase-list-summary", {
 					'<!-- /ko -->' +
 				'</ul>' +
 			'</li>' +
+			'<li class="phrase-list-container">' +
+				'<ul class="phrase-list">' +
+					'<li class="phrase-list-title"><span>Combined chars</span></li>' +
+					'<!-- ko foreach: combinedChars -->' +
+						'<li><phrase-item params="ph:$data"></phrase-item></li>' +
+					'<!-- /ko -->' +
+				'</ul>' +
+			'</li>' +
 		'</ul>'
 	,
 	viewModel: function (params) {
@@ -401,6 +411,7 @@ ko.components.register("phrase-list-summary", {
 		me.numbers = params.dataModel.pl.numbers;
 		me.emojis = params.dataModel.pl.emojis;
 		me.personNames = params.dataModel.pl.personNames;
+		me.combinedChars = params.dataModel.pl.combinedChars;
 	}
 });
 

@@ -32,6 +32,7 @@ namespace Ribbon.PostProcessor
         public List<Phrase> numbers { get; set; }
         public List<Phrase> emojis { get; set; }
         public List<Phrase> personNames { get; set; }
+        public List<Phrase> combinedChars { get; set; }
     }
 
     class WordTreeItem
@@ -186,6 +187,11 @@ namespace Ribbon.PostProcessor
             phraseSummary.personNames = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
                 .Where(phrase => this.isNamesPos(phrase.w))
+                .Take(100).ToList();
+
+            phraseSummary.combinedChars = sortedAllPhrases
+                .Where(phrase => phrase.w.Length > 1)
+                .Where(phrase => this.isComninedChar(phrase.w))
                 .Take(100).ToList();
 
             using (var fs = File.Create(summaryFileName))
@@ -368,6 +374,7 @@ namespace Ribbon.PostProcessor
         private static Regex isOneCharKana= new Regex(@"^[ぁ-ゖァ-ヶ],"); // exclude 'ー', because it is used wrongly frequently.
         private static Regex isNamePos = new Regex(@",名詞,固有名詞,人名,");
         private static Regex isSymbolPos = new Regex(@",記号,");
+        private static Regex isCombinedRegex = new Regex(@"^[\u200D\u3099\u309A\uFE00-\uFE0F]");
         // private static Regex isExcludingSymbols = new Regex(@"^[（）．，＆＃；－／％]+,");
 
         bool isAvailableAsPrediciton(string[] wordArray)
@@ -509,6 +516,19 @@ namespace Ribbon.PostProcessor
                 return false;
             }
             return wordArray.Count(x => isNamePos.IsMatch(x)) >= 2 && wordArray.All(x => (isNamePos.IsMatch(x) || isSymbolPos.IsMatch(x)));
+        }
+
+        bool isComninedChar(string[] wordArray)
+        {
+            if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
+            {
+                return false;
+            }
+            if (wordArray.Length <= 1)
+            {
+                return false;
+            }
+            return wordArray.Skip(1).Any(x => isCombinedRegex.IsMatch(x));
         }
 
         bool isOneKanaChar(string x)
