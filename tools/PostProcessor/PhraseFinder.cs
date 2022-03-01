@@ -186,7 +186,7 @@ namespace Ribbon.PostProcessor
 
             phraseSummary.personNames = sortedAllPhrases
                 .Where(phrase => phrase.w.Length > 1)
-                .Where(phrase => this.isNamesPos(phrase.w))
+                .Where(phrase => this.isNamePhrase(phrase.w))
                 .Take(100).ToList();
 
             phraseSummary.combinedChars = sortedAllPhrases
@@ -509,9 +509,13 @@ namespace Ribbon.PostProcessor
             return wordArray.Any(x => (matchNoReading.IsMatch(x) || matchFiller.IsMatch(x)) && !isNumber.IsMatch(x) && !hasKanji.IsMatch(x) && !allHiragana.IsMatch(x) && !allKatakana.IsMatch(x));
         }
 
-        bool isNamesPos(string[] wordArray)
+        bool isNamePhrase(string[] wordArray)
         {
             if (wordArray[0].Equals("[BOS]") || wordArray.Last().Equals("[EOS]"))
+            {
+                return false;
+            }
+            if (!isNamePos.IsMatch(wordArray[0]) || !isNamePos.IsMatch(wordArray.Last()))
             {
                 return false;
             }
