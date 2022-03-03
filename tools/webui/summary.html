@@ -45,6 +45,9 @@ word-prob {
 	min-width: 20ch;
 	font-size: 12px;
 }
+word-prob .lowfreq {
+	color: blue;
+}
 
 ul.phrase-list-list {
 	display: flex;
@@ -119,6 +122,8 @@ function DataModel()
 		latestPerplexity: ko.observable("0"),
 		topicEntropy: ko.observable("0"),
 		entropyAverage: ko.observable("0"),
+		maxTopic: ko.observable(0),
+		averageTopic: ko.observable(0),
 	};
 	me.topicModel = ko.observableArray([]);
 	// phrase list data
@@ -152,6 +157,8 @@ function DataModel()
 				me.tps.latestPerplexity(dataModel.tps.latestPerplexity.toString());
 				me.tps.topicEntropy(dataModel.tps.topicEntropy.toString());
 				me.tps.entropyAverage(dataModel.tps.entropyAverage.toString());
+				me.tps.maxTopic(dataModel.tps.maxTopic);
+				me.tps.averageTopic(dataModel.tps.averageTopic);
 				me.topicModel(dataModel.topicModel);
 			}
 			else if (dataModel.summaryType === me.summaryTypePhraseList)
@@ -243,7 +250,9 @@ ko.components.register("topic-model-summary", {
 			'Latest Perplexity: <span data-bind="text: latestPerplexity"></span>, ' +
 			'Perplexity: <span data-bind="text: perplexity"></span>, ' +
 			'Topic Entropy: <span data-bind="text: topicEntropy"></span>, ' +
-			'Entropy Average: <span data-bind="text: entropyAverage"></span>' +
+			'Entropy Average: <span data-bind="text: entropyAverage"></span>, ' +
+			'Max Topics: <span data-bind="text: maxTopics"></span>, ' +
+			'Average Topics: <span data-bind="text: averageTopics"></span>' +
 			'<ul class="topic-list" data-bind="foreach: topicModel">' +
 				'<li><topic-word-list params="wordList:$data, index:$index"></topic-word-list></li>' +
 			'</ul>' +
@@ -256,6 +265,8 @@ ko.components.register("topic-model-summary", {
 		me.latestPerplexity = params.dataModel.tps.latestPerplexity;
 		me.topicEntropy = params.dataModel.tps.topicEntropy;
 		me.entropyAverage = params.dataModel.tps.entropyAverage;
+		me.maxTopics = params.dataModel.tps.maxTopic;
+		me.averageTopics = params.dataModel.tps.averageTopic;
 	}
 });
 
@@ -280,11 +291,12 @@ ko.components.register("topic-word-list", {
 });
 
 ko.components.register("word-prob", {
-	template: '<span data-bind="text: wordText"></span>',
+	template: '<span data-bind="text: wordText, css: { lowfreq: isLowfreq }"></span>',
 	viewModel: function (params) {
 		let me = this;
 		let wordProps = params.wp.w.split(",");
-		me.wordText = wordProps[0] + "/" + wordProps[1];
+		me.wordText = wordProps[0] + "/" + wordProps[1] + " (" + params.wp.u.toString() + ")";
+		me.isLowfreq = !params.wp.x;
 	}
 });
 
