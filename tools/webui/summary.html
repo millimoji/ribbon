@@ -126,6 +126,7 @@ function DataModel()
 		averageTopic: ko.observable(0),
 	};
 	me.topicModel = ko.observableArray([]);
+	me.topicInfo = ko.observableArray([]);
 	// phrase list data
 	me.pl = {
 		phraseList: ko.observableArray([]),
@@ -160,6 +161,7 @@ function DataModel()
 				me.tps.maxTopic(dataModel.tps.maxTopic);
 				me.tps.averageTopic(dataModel.tps.averageTopic);
 				me.topicModel(dataModel.topicModel);
+				me.topicInfo(dataModel.topicInfo);
 			}
 			else if (dataModel.summaryType === me.summaryTypePhraseList)
 			{
@@ -254,13 +256,14 @@ ko.components.register("topic-model-summary", {
 			'Max Topics: <span data-bind="text: maxTopics"></span>, ' +
 			'Average Topics: <span data-bind="text: averageTopics"></span>' +
 			'<ul class="topic-list" data-bind="foreach: topicModel">' +
-				'<li><topic-word-list params="wordList:$data, index:$index"></topic-word-list></li>' +
+				'<li><topic-word-list params="wordList:$data, index:$index, info:$component.topicInfo"></topic-word-list></li>' +
 			'</ul>' +
 		'</div>'
 	,
 	viewModel: function (params) {
 		let me = this;
 		me.topicModel = params.dataModel.topicModel;
+		me.topicInfo = params.dataModel.topicInfo;
 		me.perplexity = params.dataModel.tps.perplexity;
 		me.latestPerplexity = params.dataModel.tps.latestPerplexity;
 		me.topicEntropy = params.dataModel.tps.topicEntropy;
@@ -286,7 +289,7 @@ ko.components.register("topic-word-list", {
 					(params.index() == 1) ? "Low P * Entropy" :
 					(params.index() == 2) ? "High Entropy" :
 					(params.index() == 3) ? "High P * Entropy" :
-					("Topic " + (params.index() - 3).toString());
+					("Topic " + (params.index() - 3).toString() + "(" + params.info()[params.index() - 3].wc + ")");
 	}
 });
 
