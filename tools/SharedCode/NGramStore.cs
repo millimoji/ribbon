@@ -571,7 +571,6 @@ namespace Ribbon.Shared
             { "SVS", new Tuple<string, string>(@"\uFE00-\uFE0F", "") }, // remove variation selector (SVS)
             { "a11", new Tuple<string, string>(@"[\u0020\u00A0\u1680\u2000-\u200C\u202F\u205F\u3000]+", "\u3000") }, // spaces
             { "a12", new Tuple<string, string>(@"ーー+", "ー") },
-            { "a13", new Tuple<string, string>(@"ぺージ", "ページ") }, // Hiragana PE => Katakana
         };
         Regex inputNormalizeRegex;
         Regex inputIgnoreCharacterRegex;
