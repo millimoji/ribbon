@@ -187,7 +187,7 @@ namespace Ribbon.PostProcessor
             }
             var outputOrder = indexList.Select(x => new Tuple<int, double>(x, topicProbs[x])).OrderByDescending(x => x.Item2).Select(x => x.Item1).ToArray();
 
-            var usedFlagCounts = wordProbMatrix.Select(x => x.Value.Select((p, idx) => (p >= threshold[idx])).Where(f => f).Count());
+            var usedFlagCounts = wordProbMatrix.Select(x => x.Value.Select((p, idx) => (p >= threshold[idx])).Where(f => f).Count()).Where(c => c > 0);
             this.maxTopicCount = usedFlagCounts.Max(x => x);
             this.averateTopicCount = usedFlagCounts.Average(x => (double)x);
 
@@ -231,11 +231,13 @@ namespace Ribbon.PostProcessor
                 Shared.TopicModelHandler.DoubleForEach(deviation, (x, idx) =>
                 {
                     var diff = kv.Value[idx] - average;
-                    return x + (diff * diff * average);
+                return x + (diff * diff);
                 });
             }
 
-            Shared.TopicModelHandler.DoubleForEach(deviation, (x, idx) => Math.Sqrt(x) + average);
+            // try use single deviation and distribution.
+            var singleDeviation = Math.Sqrt(deviation.Sum() / (double)wordProbMatrix.Count / (double)deviation.Length) * 0.8;  // TO BE adjusted
+            Shared.TopicModelHandler.DoubleForEach(deviation, (x, idx) => singleDeviation + average);
             return deviation;
         }
     }
