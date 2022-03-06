@@ -22,6 +22,7 @@ namespace Ribbon.WebCrawler
         }
 
         const int saveInternvalHour = 6;
+        const int exitIntervalHour = 24;
         const int parallelDownload = 10;
 
         Shared.MorphAnalyzer m_morphAnalyzer = new Shared.MorphAnalyzer(Constants.workingFolder);
@@ -32,6 +33,7 @@ namespace Ribbon.WebCrawler
         private DateTime lastSavedTime = DateTime.Now;
         private DateTime programStartTime = DateTime.Now;
         private bool isEveryHourMode = true;
+        private bool exitProgram = false;
 
         private string[] focusedDomains = new string[]
         {
@@ -64,7 +66,7 @@ namespace Ribbon.WebCrawler
 
             DownloadTaskResult downloadResult = LoadWebAndAnalyze(targetUrls).GetAwaiter().GetResult();
 
-            for (;;)
+            while (!exitProgram)
             {
                 Console.WriteLine("Picking up URLs");
                 targetUrls = m_dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
@@ -143,7 +145,13 @@ namespace Ribbon.WebCrawler
                     else
                     {
                         var passedTime = DateTime.Now - this.lastSavedTime;
-                        if (passedTime.TotalMinutes >= (new TimeSpan(saveInternvalHour, 0, 0)).TotalMinutes)
+                        if (passedTime.TotalMinutes >= (new TimeSpan(exitIntervalHour, 0, 0)).TotalMinutes)
+                        {
+                            m_nGraphStore.SaveFile();
+                            Shared.FileOperation.RunPostProcessor();
+                            this.exitProgram = true;
+                        }
+                        else if (passedTime.TotalMinutes >= (new TimeSpan(saveInternvalHour, 0, 0)).TotalMinutes)
                         {
                             this.lastSavedTime = DateTime.Now;
                             m_nGraphStore.SaveFile();
