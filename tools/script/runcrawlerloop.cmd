@@ -8,4 +8,6 @@ set WEBCRAWLEREXE=%SCRIPTDIR%..\WebCrawler\bin\Debug\WebCrawler.exe
 
 timeout /T 60
 
+call %SCRIPTDIR%mkmecab.cmd
+
 goto :LOOPTOP
