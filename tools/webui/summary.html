@@ -107,6 +107,9 @@ function DataModel()
 	me.topicModelSummaryJson = "topicmodel-summary.json";
 	me.phraseListSummaryJson = "phrase-list-summary.json";
 	me.phraseListSummaryDiffJson = "phrase-list-summary-diff.json";
+	me.old1PhraseListSummaryDiffJson = "old-phrase-list-summary-diff.json";
+	me.old2PhraseListSummaryDiffJson = "old2-phrase-list-summary-diff.json";
+	me.old3PhraseListSummaryDiffJson = "old3-phrase-list-summary-diff.json";
 	me.posBigramSummaryJson = "pos-bigram-summary.json";
 	me.summaryTypeTopicModel = "topicModel";
 	me.summaryTypePhraseList = "phraseList";
@@ -305,6 +308,9 @@ ko.components.register("word-prob", {
 
 ko.components.register("phrase-list-summary", {
 	template:
+		'<button data-bind="click: onClickShowOld1Summary">old1</button>' +
+		'<button data-bind="click: onClickShowOld2Summary">old2</button>' +
+		'<button data-bind="click: onClickShowOld3Summary">old3</button>' +
 		'<ul class="phrase-list-list">' +
 			'<li class="phrase-list-container">' +
 				'<ul class="phrase-list">' +
@@ -427,6 +433,9 @@ ko.components.register("phrase-list-summary", {
 		me.emojis = params.dataModel.pl.emojis;
 		me.personNames = params.dataModel.pl.personNames;
 		me.combinedChars = params.dataModel.pl.combinedChars;
+		me.onClickShowOld1Summary = () => { params.dataModel.reloadJson(params.dataModel.old1PhraseListSummaryDiffJson); };
+		me.onClickShowOld2Summary = () => { params.dataModel.reloadJson(params.dataModel.old2PhraseListSummaryDiffJson); };
+		me.onClickShowOld3Summary = () => { params.dataModel.reloadJson(params.dataModel.old3PhraseListSummaryDiffJson); };
 	}
 });
 
