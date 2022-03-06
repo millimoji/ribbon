@@ -26,8 +26,15 @@ echo del mixunigram-summary.json>> %TEMP%\ftpcommand.txt
 echo put c:\lmworking\mixunigram-summary.json>> %TEMP%\ftpcommand.txt
 echo del phrase-list-summary.json>> %TEMP%\ftpcommand.txt
 echo put c:\lmworking\phrase-list-summary.json>> %TEMP%\ftpcommand.txt
+
 echo del phrase-list-summary-diff.json>> %TEMP%\ftpcommand.txt
+echo del old-phrase-list-summary-diff.json>> %TEMP%\ftpcommand.txt
+echo del old2-phrase-list-summary-diff.json>> %TEMP%\ftpcommand.txt
+echo del old3-phrase-list-summary-diff.json>> %TEMP%\ftpcommand.txt
 echo put c:\lmworking\phrase-list-summary-diff.json>> %TEMP%\ftpcommand.txt
+echo put c:\lmworking\old-phrase-list-summary-diff.json>> %TEMP%\ftpcommand.txt
+echo put c:\lmworking\old2-phrase-list-summary-diff.json>> %TEMP%\ftpcommand.txt
+echo put c:\lmworking\old3-phrase-list-summary-diff.json>> %TEMP%\ftpcommand.txt
 echo del pos-bigram-summary.json>> %TEMP%\ftpcommand.txt
 echo put c:\lmworking\pos-bigram-summary.json>> %TEMP%\ftpcommand.txt
 echo quit>> %TEMP%\ftpcommand.txt
