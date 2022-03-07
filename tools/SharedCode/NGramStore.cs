@@ -656,6 +656,8 @@ namespace Ribbon.Shared
             { "&rarr;", "→" },
             { "&quot;", "\"" },
             { "&hellip;", "…" },
+            // see lots of this error
+            { "ぺージ", "ページ" }, // Hiragana PE => Katakana PE
             // direction control
             { "\u202A", "" }, // LEFT-TO-RIGHT EMBEDDING
             { "\u202B", "" }, // RIGHT-TO-LEFT EMBEDDING
