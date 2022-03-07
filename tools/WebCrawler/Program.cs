@@ -32,7 +32,7 @@ namespace Ribbon.WebCrawler
         private Random random = new Random();
         private DateTime lastSavedTime = DateTime.Now;
         private DateTime programStartTime = DateTime.Now;
-        private bool isEveryHourMode = true;
+        private bool isEveryHourMode = false; // disabled
         private bool exitProgram = false;
 
         private string[] focusedDomains = new string[]
