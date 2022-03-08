@@ -58,9 +58,14 @@ namespace Ribbon.Shared
         public Dictionary<Tuple<int, int, int, int, int, int, int>, long>[] nGramList { get { return this.m_nGrams;  } }
         public Dictionary<Tuple<string, string>, long> posBigram { get { return m_posBigram; } }
 
+        public double ContentFilledRate()
+        {
+            return (double)this.m_nGrams[6].Count / (double)thresholdToDiv2;
+        }
+
         public bool ShouldFlush()
         {
-            return this.m_nGrams[6].Count >= thresholdToDiv2;
+            return this.ContentFilledRate() >= 1.0;
         }
 
         public bool CanSave()
