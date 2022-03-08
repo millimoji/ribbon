@@ -576,7 +576,8 @@ namespace Ribbon.Shared
                 this.baseState.PrepareMixtureUnigramModel(this.documentHistory) :
                 this.baseState.PrepareTopicModel(this.documentHistory);
 
-            for (int loopCount = 1; ; ++loopCount)
+            //for (int loopCount = 1; ; ++loopCount)
+            for (int loopCount = 1; loopCount < 3; ++loopCount)
             {
                 var currentPp = this.isMixUniModel ?
                         this.baseState.CalculateMixtureUnigramModel(this.documentHistory, TopicModelHandler.updateMergeRate) :
@@ -586,11 +587,13 @@ namespace Ribbon.Shared
 
                 if (ppLocalHist.Count > 0)
                 {
+#if false
                     var goNext = ppLocalHist.Skip(Math.Max(ppLocalHist.Count - 5, 0)).All(x => Math.Abs(x - currentPp) < currentPp * 0.1);
                     if (goNext)
                     {
                         break;
                     }
+#endif
                 }
                 else
                 {

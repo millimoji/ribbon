@@ -32,6 +32,7 @@ namespace Ribbon.PostProcessor
             public double topicEntropy { get; set; }
             public int maxTopic { get; set; }
             public double averageTopic { get; set; }
+            public int wordCount { get; set; }
         }
         public class SummaryStruct
         {
@@ -50,6 +51,7 @@ namespace Ribbon.PostProcessor
         // dirty ... calculated in MakeTopicModelSummary()
         int maxTopicCount = 0;
         double averateTopicCount = 0.0;
+        int wordCount = 0;
         List<JsonType.TI> topicInfo = new List<JsonType.TI>();
 
         public void MakeSumarize(
@@ -82,6 +84,7 @@ namespace Ribbon.PostProcessor
             summary.tps.entropyAverage = entropyAverage;
             summary.tps.maxTopic = this.maxTopicCount;
             summary.tps.averageTopic = this.averateTopicCount;
+            summary.tps.wordCount = this.wordCount;
             summary.topicInfo = this.topicInfo;
 
 
@@ -187,9 +190,10 @@ namespace Ribbon.PostProcessor
             }
             var outputOrder = indexList.Select(x => new Tuple<int, double>(x, topicProbs[x])).OrderByDescending(x => x.Item2).Select(x => x.Item1).ToArray();
 
-            var usedFlagCounts = wordProbMatrix.Select(x => x.Value.Select((p, idx) => (p >= threshold[idx])).Where(f => f).Count()).Where(c => c > 0);
-            this.maxTopicCount = usedFlagCounts.Max(x => x);
+            var usedFlagCounts = wordProbMatrix.Select(x => x.Value.Where((p, idx) => p >= threshold[idx]).Count()).Where(x => x > 0);
+            this.maxTopicCount = usedFlagCounts.Max();
             this.averateTopicCount = usedFlagCounts.Average(x => (double)x);
+            this.wordCount = usedFlagCounts.Count();
 
             for (int topic = 0; topic < topicCount; ++topic)
             {

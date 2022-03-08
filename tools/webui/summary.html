@@ -127,6 +127,7 @@ function DataModel()
 		entropyAverage: ko.observable("0"),
 		maxTopic: ko.observable(0),
 		averageTopic: ko.observable(0),
+		wordCount: ko.observable(0),
 	};
 	me.topicModel = ko.observableArray([]);
 	me.topicInfo = ko.observableArray([]);
@@ -163,6 +164,7 @@ function DataModel()
 				me.tps.entropyAverage(dataModel.tps.entropyAverage.toString());
 				me.tps.maxTopic(dataModel.tps.maxTopic);
 				me.tps.averageTopic(dataModel.tps.averageTopic);
+				me.tps.wordCount(dataModel.tps.wordCount);
 				me.topicModel(dataModel.topicModel);
 				me.topicInfo(dataModel.topicInfo);
 			}
@@ -257,7 +259,8 @@ ko.components.register("topic-model-summary", {
 			'Topic Entropy: <span data-bind="text: topicEntropy"></span>, ' +
 			'Entropy Average: <span data-bind="text: entropyAverage"></span>, ' +
 			'Max Topics: <span data-bind="text: maxTopics"></span>, ' +
-			'Average Topics: <span data-bind="text: averageTopics"></span>' +
+			'Average Topics: <span data-bind="text: averageTopics"></span> ' +
+			'Word count: <span data-bind="text: wordCount"></span>' +
 			'<ul class="topic-list" data-bind="foreach: topicModel">' +
 				'<li><topic-word-list params="wordList:$data, index:$index, info:$component.topicInfo"></topic-word-list></li>' +
 			'</ul>' +
@@ -273,6 +276,7 @@ ko.components.register("topic-model-summary", {
 		me.entropyAverage = params.dataModel.tps.entropyAverage;
 		me.maxTopics = params.dataModel.tps.maxTopic;
 		me.averageTopics = params.dataModel.tps.averageTopic;
+		me.wordCount = params.dataModel.tps.wordCount;
 	}
 });
 
