@@ -35,6 +35,9 @@ namespace Ribbon.WebCrawler
         private bool isEveryHourMode = false; // disabled
         private bool exitProgram = false;
 
+        const int uniqueContentFlashThreashold = 100000;
+        HashSet<string> uniqueCotent = new HashSet<string>();
+
         private string[] focusedDomains = new string[]
         {
             "https://www.asahi.com/",
@@ -119,6 +122,14 @@ namespace Ribbon.WebCrawler
                 }
 
                 Console.WriteLine("Analyze Japanese Text");
+                thisResult.contentTexts.ExceptWith(this.uniqueCotent);
+
+                this.uniqueCotent.UnionWith(thisResult.contentTexts);
+                if (this.uniqueCotent.Count > uniqueContentFlashThreashold)
+                {
+                    this.uniqueCotent.Clear();
+                }
+
                 var morphListList = m_morphAnalyzer.Run(thisResult.contentTexts);
 
                 Console.WriteLine("Store Ngram");
@@ -163,7 +174,7 @@ namespace Ribbon.WebCrawler
                     }
                 }
                 var filledRate = m_nGraphStore.ContentFilledRate();
-                Console.WriteLine($"End: LoadWebAndAnalyze, elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, filledRate: {filledRate}, lastSaveTime: {this.lastSavedTime.Hour}:{this.lastSavedTime.Minute}");
+                Console.WriteLine($"End: LoadWebAndAnalyze, elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, uniqueText: {uniqueCotent.Count}, filledRate: {filledRate}, lastSaveTime: {this.lastSavedTime.Hour}:{this.lastSavedTime.Minute}");
                 return thisResult;
             });
         }
