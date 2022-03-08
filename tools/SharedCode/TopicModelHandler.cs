@@ -495,7 +495,7 @@ namespace Ribbon.Shared
             }
             public int GetHashCode(HashSet<int> h)
             {
-                return h.GetHashCode();
+                return h.Sum().GetHashCode();
             }
         }
 
@@ -566,10 +566,7 @@ namespace Ribbon.Shared
                 return; // ignore
             }
 
-            if (!this.documentHistory.Add(hashId))
-            {
-                Console.WriteLine("duplicated doc");
-            }
+            this.documentHistory.Add(hashId);
             this.uniqueWord.UnionWith(hashId);
 
             if (this.uniqueWord.Count >= TopicModelHandler.updateUniqueWord)
