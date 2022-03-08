@@ -138,8 +138,8 @@ namespace Ribbon.WebCrawler
                     if (m_nGraphStore.ShouldFlush())
                     {
                         this.lastSavedTime = DateTime.Now;
-                        m_nGraphStore.SaveFile();
-                        m_nGraphStore.LoadFromFile(2);
+                        m_nGraphStore.SaveFile(2);
+                        m_nGraphStore.LoadFromFile();
                         Shared.FileOperation.RunPostProcessor();
                     }
                     else

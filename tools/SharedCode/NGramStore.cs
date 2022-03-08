@@ -39,7 +39,6 @@ namespace Ribbon.Shared
         const string posBigramFilename = "posbigram.txt";
         readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName, posBigramFilename,
             Constants.topicModelFileName, Constants.topicModelSummaryFilename, Constants.mixUnigramlFileName, Constants.mixUnigramSummaryFilename };
-        const string doHalfFileName = "dohalf";
 
         TopicModelHandler m_topicModel;
         TopicModelHandler m_mixUnigram;
@@ -69,7 +68,7 @@ namespace Ribbon.Shared
             return m_topicModel.CanSave(); // m_mixUnigram
         }
 
-        public void SaveFile() // should 
+        public void SaveFile(int divNum = 1)
         {
             FileOperation.SlideDataFile(this.fileNames, Constants.workingFolder);
 
@@ -82,6 +81,28 @@ namespace Ribbon.Shared
                 {
                     foreach (var item in nGramHashMap.OrderByDescending(item => item.Value))
                     {
+                        long writeCount = item.Value;
+                        if (divNum > 1)
+                        {
+                            if (item.Value == 0)
+                            {
+                                continue; // skip
+                            }
+                            if (item.Value < divNum)
+                            {
+                                if (nGram != 1)
+                                {
+                                    continue; // remove this if not unigram
+                                }
+                                if (!TopicModelHandler.isTargetWord(WordList[item.Key.Item1]))
+                                {
+                                    continue; // remove this if TopicModel does not use
+                                }
+                                // enlong count 1 word life time for topic model with count 0
+                            }
+                            writeCount /= divNum;
+                        }
+
                         string outputLine = WordList[item.Key.Item1] + "\t";
                         if (nGram >= 2) { outputLine += WordList[item.Key.Item2] + "\t"; }
                         if (nGram >= 3) { outputLine += WordList[item.Key.Item3] + "\t"; }
@@ -89,7 +110,7 @@ namespace Ribbon.Shared
                         if (nGram >= 5) { outputLine += WordList[item.Key.Item5] + "\t"; }
                         if (nGram >= 6) { outputLine += WordList[item.Key.Item6] + "\t"; }
                         if (nGram >= 7) { outputLine += WordList[item.Key.Item7] + "\t"; }
-                        outputLine += item.Value.ToString();
+                        outputLine += writeCount.ToString();
                         fileStream.WriteLine(outputLine);
                     }
                 }
@@ -107,14 +128,9 @@ namespace Ribbon.Shared
             m_mixUnigram.SaveToFile(m_workDir + Constants.mixUnigramlFileName, m_workDir + Constants.mixUnigramSummaryFilename, (int id) => this.WordList[id]);
         }
 
-        public long [] LoadFromFile(int divNum = 1, int cutOut = 0)
+        public long [] LoadFromFile(int cutOut = 0)
         {
             var totalCounts = new long[Constants.maxNGram];
-            if (File.Exists(m_workDir + doHalfFileName))
-            {
-                divNum = 2;
-                File.Delete(m_workDir + doHalfFileName);
-            }
 
             //
             this.WordHash = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -150,14 +166,6 @@ namespace Ribbon.Shared
                             {
                                 long hashValue = 0;
                                 long.TryParse(nGramLine[nGram], out hashValue);
-                                if (divNum > 0)
-                                {
-                                    hashValue = hashValue / divNum;
-                                    if (hashValue <= 0)
-                                    {
-                                        continue;
-                                    }
-                                }
                                 totalCounts[nGram - 1] += hashValue;
                                 if (cutOut > 0)
                                 {
@@ -198,14 +206,6 @@ namespace Ribbon.Shared
                         if (!long.TryParse(fields[2], out bigramCount))
                         {
                             continue;
-                        }
-                        if (divNum > 0)
-                        {
-                            bigramCount = bigramCount / divNum;
-                            if (bigramCount == 0)
-                            {
-                                continue;
-                            }
                         }
                         this.m_posBigram.Add(new Tuple<string, string>(fields[0], fields[1]), bigramCount);
                     }
