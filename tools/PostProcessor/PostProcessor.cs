@@ -22,7 +22,7 @@ namespace Ribbon.PostProcessor
             Shared.FileOperation.SlideDataFile(targetFiles, Constants.workingFolder);
 
             var nGramStore = new Shared.NGramStore(Constants.workingFolder);
-            var totalCounts = nGramStore.LoadFromFile(1, 10);
+            var totalCounts = nGramStore.LoadFromFile(10 /* cutout */);
 
             var posListMaker = new PosListMaker(Constants.workingFolder);
             posListMaker.OutputPosBigram(nGramStore);

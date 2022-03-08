@@ -138,8 +138,8 @@ namespace Ribbon.WebCrawler
                     if (m_nGraphStore.ShouldFlush())
                     {
                         this.lastSavedTime = DateTime.Now;
-                        m_nGraphStore.SaveFile();
-                        m_nGraphStore.LoadFromFile(2);
+                        m_nGraphStore.SaveFile(2);
+                        m_nGraphStore.LoadFromFile();
                         Shared.FileOperation.RunPostProcessor();
                     }
                     else
@@ -166,8 +166,8 @@ namespace Ribbon.WebCrawler
                         }
                     }
                 }
-                var nextSaveTime = this.lastSavedTime + (this.isEveryHourMode ? new TimeSpan(1, 0, 0) : new TimeSpan(saveInternvalHour, 0, 0));
-                Console.WriteLine($"End: LoadWebAndAnalyze, elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, next save time: {nextSaveTime.Hour}:{nextSaveTime.Minute}");
+                var filledRate = m_nGraphStore.ContentFilledRate();
+                Console.WriteLine($"End: LoadWebAndAnalyze, elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, filledRate: {filledRate}, lastSaveTime: {this.lastSavedTime.Hour}:{this.lastSavedTime.Minute}");
                 return thisResult;
             });
         }
