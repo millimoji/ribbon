@@ -110,10 +110,6 @@ namespace Ribbon.WebCrawler
 
                 DownloadTaskResult thisResult = new DownloadTaskResult();
 
-                HashSet<string> allText = new HashSet<string>();
-                HashSet<string> allAnchorHrefs = new HashSet<string>();
-                HashSet<string> allPageUrls = new HashSet<string>();
-
                 foreach (var task in tasks)
                 {
                     var result = task.Result;

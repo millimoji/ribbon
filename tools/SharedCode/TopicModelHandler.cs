@@ -122,7 +122,7 @@ namespace Ribbon.Shared
         }
 
         #region MixtureUnigramModel
-        public bool PrepareMixtureUnigramModel(List<List<int>> documents)
+        public bool PrepareMixtureUnigramModel(HashSet<HashSet<int>> documents)
         {
             Func<bool> MakeInitialTopic = () =>
             {
@@ -171,7 +171,7 @@ namespace Ribbon.Shared
             return true;
         }
 
-        public double CalculateMixtureUnigramModel(List<List<int>> documents, double oldRate)
+        public double CalculateMixtureUnigramModel(HashSet<HashSet<int>> documents, double oldRate)
         {
             var likeliHood = 0.0;
             var wordCount = 0;
@@ -235,13 +235,14 @@ namespace Ribbon.Shared
         #endregion
 
         #region TopicModel
-        public bool PrepareTopicModel(List<List<int>> documents)
+        public bool PrepareTopicModel(HashSet<HashSet<int>> documents)
         {
             var qWork = new double[TopicModelHandler.TopicCount];
             this.topicProbs = new double[documents.Count][];
-            for (var docIdx = 0; docIdx < documents.Count; ++docIdx)
+            int docIdx = -1;
+            foreach (var doc in documents)
             {
-                var doc = documents[docIdx];
+                docIdx++;
                 bool foundAtLeast = false;
 
                 var tmTopicProb = this.topicProbs[docIdx] = new double[TopicModelHandler.TopicCount];
@@ -279,7 +280,7 @@ namespace Ribbon.Shared
             return true;
         }
 
-        public double CalculateTopicModel(List<List<int>> documents, double oldRate)
+        public double CalculateTopicModel(HashSet<HashSet<int>> documents, double oldRate)
         {
             var likeliHood = 0.0;
             var wordCount = 0;
@@ -292,9 +293,10 @@ namespace Ribbon.Shared
             var qWork = new double[TopicModelHandler.TopicCount];
             var nextTopicProbs = new double[TopicModelHandler.TopicCount];
 
-            for (int docIdx = 0; docIdx < documents.Count; ++docIdx)
+            var docIdx = -1;
+            foreach (var doc in documents)
             {
-                var doc = documents[docIdx];
+                docIdx++;
                 var currentTopic = this.topicProbs[docIdx];
                 wordCount += doc.Count;
 
@@ -382,7 +384,7 @@ namespace Ribbon.Shared
             this.NormalizeWordList(this.wordProbs);
         }
 
-        public void PrepareForNewWordSet(List<List<int>> documents)
+        public void PrepareForNewWordSet(HashSet<HashSet<int>> documents)
         {
             this.nextWordProbs = new Dictionary<int, double[]>(); // reset
 
@@ -479,17 +481,30 @@ namespace Ribbon.Shared
 
         private TopicModelState baseState;
         private Queue<double> ppHist = new Queue<double>();
-        private List<List<int>> documentHistory = new List<List<int>>();
+        private HashSet<HashSet<int>> documentHistory = null;
         private HashSet<int> uniqueWord = new HashSet<int>();
         private bool isMixUniModel = false;
         private string logPrefix;
         private double[] loadedPp = new double[] { 0.0, 0.0, 0.0 };
+
+        class HashSetIntComparer : IEqualityComparer<HashSet<int>>
+        {
+            public bool Equals(HashSet<int> l, HashSet<int> r)
+            {
+                return l.SetEquals(r);
+            }
+            public int GetHashCode(HashSet<int> h)
+            {
+                return h.GetHashCode();
+            }
+        }
 
         public TopicModelHandler(bool isMixUnigram)
         {
             this.isMixUniModel = isMixUnigram;
             this.baseState = new TopicModelState();
             this.logPrefix = this.isMixUniModel ? "MixUnigram" : "TopicModel";
+            this.documentHistory = new HashSet<HashSet<int>>(new HashSetIntComparer());
 
             this.ClearStoredData();
             this.ppHist.Clear();
@@ -545,14 +560,17 @@ namespace Ribbon.Shared
 
         public void LearnDocument(List<string> document, Func<string, int> word2id)
         {
-            var listId = this.WordArrayToIntArray(document, word2id);
-            if (listId.Count < wordCountRequirement)
+            var hashId = this.WordArrayToIntHash(document, word2id);
+            if (hashId.Count < wordCountRequirement)
             {
                 return; // ignore
             }
 
-            this.documentHistory.Add(listId);
-            listId.ForEach(x => this.uniqueWord.Add(x));
+            if (!this.documentHistory.Add(hashId))
+            {
+                Console.WriteLine("duplicated doc");
+            }
+            this.uniqueWord.UnionWith(hashId);
 
             if (this.uniqueWord.Count >= TopicModelHandler.updateUniqueWord)
             {
@@ -563,7 +581,7 @@ namespace Ribbon.Shared
         public void PrintCurretState()
         {
             var lastPp = this.ppHist.Count == 0 ? 0.0 : this.ppHist.Last();
-            Console.WriteLine($"[{this.logPrefix}] pp:{lastPp}, word:{this.baseState.GetWordCount()}, dos:{this.documentHistory.Count}, words:{this.uniqueWord.Count}, " +
+            Console.WriteLine($"[{this.logPrefix}] pp:{lastPp}, word:{this.baseState.GetWordCount()}, docs:{this.documentHistory.Count}, words:{this.uniqueWord.Count}, " +
                     $"pp-ave:{this.ppHist.Average()}, pp-min:{this.ppHist.Min()}");
         }
 
@@ -617,9 +635,9 @@ namespace Ribbon.Shared
             this.ClearStoredData();
         }
 
-        private List<int> WordArrayToIntArray(List<string> document, Func<string, int> word2id)
+        private HashSet<int> WordArrayToIntHash(List<string> document, Func<string, int> word2id)
         {
-            return document.Select(word => (TopicModelHandler.isTargetWord(word) ? word2id(word) : -1)).Where(wordId => wordId >= 0).ToList();
+            return document.Select(word => (TopicModelHandler.isTargetWord(word) ? word2id(word) : -1)).Where(wordId => wordId >= 0).ToHashSet();
         }
 
         private static Regex matchNoReading = new Regex(@",\*,\*$");
@@ -639,7 +657,8 @@ namespace Ribbon.Shared
                 @"^その,連体詞,|" +
                 @"^どの,連体詞,|" +
                 @"^さらに,副詞,|" +
-                @"^もちろん,副詞," +
+                @"^もちろん,副詞,|" +
+                @"^情報,名詞," +  // too frequent word
             ")");
 
         public static bool isTargetWord(string word)
