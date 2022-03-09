@@ -121,6 +121,7 @@ namespace Ribbon.WebCrawler
                     thisResult.pageUrls.UnionWith(result.PageUrls);
                 }
 
+                var rawContentCount = thisResult.contentTexts.Count;
                 foreach (var contentText in thisResult.contentTexts.ToArray())
                 {
                     if (this.contentHistoryDate.ContainsKey(contentText))
@@ -143,7 +144,7 @@ namespace Ribbon.WebCrawler
                     }
                 }
 
-                Console.WriteLine("Analyze Japanese Text");
+                Console.WriteLine($"Analyze Japanese Text, raw:{rawContentCount} => uniq:{thisResult.contentTexts.Count}");
 
                 var morphListList = m_morphAnalyzer.Run(thisResult.contentTexts);
 
