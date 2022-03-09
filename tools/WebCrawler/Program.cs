@@ -21,7 +21,7 @@ namespace Ribbon.WebCrawler
             public HashSet<string> referenceUrls = new HashSet<string>();
         }
 
-        const int saveInternvalHour = 3; // 6;
+        const int saveInternvalHour = 6;
         const int exitIntervalHour = 24;
         const int parallelDownload = 10;
 
