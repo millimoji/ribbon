@@ -26,7 +26,7 @@ namespace Ribbon.Shared
         };
         Dictionary<Tuple<string, string>, long> m_posBigram;
 
-        const int thresholdToDiv2 = 4000000; // n7gram max
+        const int thresholdToDiv2 = 8000000; // n7gram max
         const string BOS = "[BOS]";
         const string EOS = "[EOS]";
         const string unigramFileName = "unigram.txt";
