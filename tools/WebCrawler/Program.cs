@@ -21,7 +21,7 @@ namespace Ribbon.WebCrawler
             public HashSet<string> referenceUrls = new HashSet<string>();
         }
 
-        const int saveInternvalHour = 6;
+        const int saveInternvalHour = 3; // 6;
         const int exitIntervalHour = 24;
         const int parallelDownload = 10;
 
@@ -35,8 +35,8 @@ namespace Ribbon.WebCrawler
         private bool isEveryHourMode = false; // disabled
         private bool exitProgram = false;
 
-        const int uniqueContentFlashThreashold = 100000;
-        HashSet<string> uniqueCotent = new HashSet<string>();
+        const int maxCotentHistory = 3000; // 10000;
+        Dictionary<string, DateTime> contentHistoryDate = new Dictionary<string, DateTime>();
 
         private string[] focusedDomains = new string[]
         {
@@ -121,14 +121,29 @@ namespace Ribbon.WebCrawler
                     thisResult.pageUrls.UnionWith(result.PageUrls);
                 }
 
-                Console.WriteLine("Analyze Japanese Text");
-                thisResult.contentTexts.ExceptWith(this.uniqueCotent);
-
-                this.uniqueCotent.UnionWith(thisResult.contentTexts);
-                if (this.uniqueCotent.Count > uniqueContentFlashThreashold)
+                foreach (var contentText in thisResult.contentTexts.ToArray())
                 {
-                    this.uniqueCotent.Clear();
+                    if (this.contentHistoryDate.ContainsKey(contentText))
+                    {
+                        this.contentHistoryDate[contentText] = DateTime.Now;
+                        thisResult.contentTexts.Remove(contentText);
+                    }
+                    else
+                    {
+                        this.contentHistoryDate.Add(contentText, DateTime.Now);
+                    }
                 }
+                if (this.contentHistoryDate.Count > maxCotentHistory)
+                {
+                    var removeCount = this.contentHistoryDate.Count - maxCotentHistory;
+                    var removeList = this.contentHistoryDate.OrderBy(kv => kv.Value).Take(removeCount).Select(kv => kv.Key).ToArray();
+                    foreach (var key in removeList)
+                    {
+                        this.contentHistoryDate.Remove(key);
+                    }
+                }
+
+                Console.WriteLine("Analyze Japanese Text");
 
                 var morphListList = m_morphAnalyzer.Run(thisResult.contentTexts);
 
@@ -174,7 +189,7 @@ namespace Ribbon.WebCrawler
                     }
                 }
                 var filledRate = m_nGraphStore.ContentFilledRate();
-                Console.WriteLine($"End: LoadWebAndAnalyze, elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, uniqueText: {uniqueCotent.Count}, filledRate: {filledRate}, lastSaveTime: {this.lastSavedTime.Hour}:{this.lastSavedTime.Minute}");
+                Console.WriteLine($"End: LoadWebAndAnalyze, elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, filledRate: {filledRate}, lastSaveTime: {this.lastSavedTime.Hour}:{this.lastSavedTime.Minute}");
                 return thisResult;
             });
         }
