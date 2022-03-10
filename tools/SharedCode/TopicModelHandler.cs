@@ -482,6 +482,7 @@ namespace Ribbon.Shared
         private TopicModelState baseState;
         private Queue<double> ppHist = new Queue<double>();
         private HashSet<HashSet<int>> documentHistory = null;
+        private HashSet<HashSet<int>> lastDocumentHistory = null;
         private HashSet<int> uniqueWord = new HashSet<int>();
         private bool isMixUniModel = false;
         private string logPrefix;
@@ -505,6 +506,7 @@ namespace Ribbon.Shared
             this.baseState = new TopicModelState();
             this.logPrefix = this.isMixUniModel ? "MixUnigram" : "TopicModel";
             this.documentHistory = new HashSet<HashSet<int>>(new HashSetIntComparer());
+            this.lastDocumentHistory = null;
 
             this.ClearStoredData();
             this.ppHist.Clear();
@@ -541,6 +543,7 @@ namespace Ribbon.Shared
         private void ClearStoredData()
         {
             this.documentHistory.Clear();
+            this.lastDocumentHistory = null;
             this.uniqueWord.Clear();
         }
 
@@ -587,16 +590,22 @@ namespace Ribbon.Shared
             var currentModel = this.baseState.DeepCopy();
             var ppLocalHist = new List<double>();
 
+            var mergedDocuments = new HashSet<HashSet<int>>(this.documentHistory, new HashSetIntComparer());
+            if (this.lastDocumentHistory != null)
+            {
+                mergedDocuments.UnionWith(this.lastDocumentHistory);
+            }
+
             var result = this.isMixUniModel ?
-                this.baseState.PrepareMixtureUnigramModel(this.documentHistory) :
-                this.baseState.PrepareTopicModel(this.documentHistory);
+                this.baseState.PrepareMixtureUnigramModel(mergedDocuments) :
+                this.baseState.PrepareTopicModel(mergedDocuments);
 
             for (int loopCount = 1; ; ++loopCount)
             //for (int loopCount = 1; loopCount < 3; ++loopCount)
             {
                 var currentPp = this.isMixUniModel ?
-                        this.baseState.CalculateMixtureUnigramModel(this.documentHistory, TopicModelHandler.updateMergeRate) :
-                        this.baseState.CalculateTopicModel(this.documentHistory, TopicModelHandler.updateMergeRate);
+                        this.baseState.CalculateMixtureUnigramModel(mergedDocuments, TopicModelHandler.updateMergeRate) :
+                        this.baseState.CalculateTopicModel(mergedDocuments, TopicModelHandler.updateMergeRate);
 
                 Console.WriteLine($"[{this.logPrefix}:{loopCount}] pp:{currentPp}, word:{this.baseState.GetWordCount()}");
 
@@ -629,7 +638,10 @@ namespace Ribbon.Shared
                 this.baseState.FinalizeMixUnigram(TopicModelHandler.updateMergeRate) :
                 this.baseState.FinalizeTopicModel(TopicModelHandler.updateMergeRate);
 
-            this.ClearStoredData();
+            // this.ClearStoredData();
+            this.lastDocumentHistory = this.documentHistory;
+            this.documentHistory = new HashSet<HashSet<int>>(new HashSetIntComparer());
+            this.uniqueWord.Clear();
         }
 
         private HashSet<int> WordArrayToIntHash(List<string> document, Func<string, int> word2id)
