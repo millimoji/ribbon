@@ -106,56 +106,70 @@ namespace Ribbon.PostProcessor
             var topicData = new List<JsonType.WP[]>();
 
             var topicCount = wordProbMatrix.First().Value.Length;
-            var normalizeWork = new double[topicCount];
+            //var normalizeWork = new double[topicCount];
             var log2 = Math.Log(2.0);
             var logTC = -Math.Log(1.0 / (double)topicCount) / log2;
             var entropyList = wordProbMatrix
                 .Select(kv =>
                 {
-                    Shared.TopicModelHandler.DoubleForEach(normalizeWork, (double x, int idx) => (topicProbs[idx] * kv.Value[idx]));
-                    var sum = normalizeWork.Sum();
-                    var pLogPs = normalizeWork.Select(l =>
+                    var uinigram = kv.Value.Select((v, idx) => v * topicProbs[idx]).Sum();
+
+                    // calculate entropy
+                    var sum = kv.Value.Sum();
+                    var pLogPs = kv.Value.Select(l =>
                     {
                         var p = l / sum;
                         var pLogP = p * Math.Log(p) / log2;
                         return pLogP;
                     });
-                    var entropy = -pLogPs.Sum() / logTC;
+                    var entropy = -pLogPs.Sum() / logTC; // normalize entropy 0.0-1.0
                     if (entropy > 1.0)
                     {
                         throw new Exception("Invalid range");
                     }
-                    return new Tuple<int, string, double, double, double[]>(kv.Key, id2word(kv.Key), entropy, sum, kv.Value);
+
+                    // calculate deviation
+                    var average = kv.Value.Average();
+                    var sqrSum = kv.Value.Select(x =>
+                    {
+                        var diff = x - average;
+                        return diff * diff;
+                    }).Sum() / (double)kv.Value.Length;
+                    var lowerBound = average + Math.Sqrt(sqrSum) * 1.0; // Standard deviation 60.
+
+                    // used count
+                    var usedCount = kv.Value.Count(v => v >= lowerBound);
+
+                    return new Tuple<int, string, double, double, double, int, double[]>(kv.Key, id2word(kv.Key), entropy, uinigram, lowerBound, usedCount, kv.Value);
                 });
             var entropyDict = entropyList.ToDictionary(x => x.Item1);
             entropyAverage = entropyList.Select(x => x.Item3).Sum() / (double)entropyList.Count();
 
-            var threshold = this.CalcStandardDeviation(wordProbMatrix);
+            //var threshold = this.CalcStandardDeviation(wordProbMatrix);
+            //var threshold = this.CalcStandardDeviation2(wordProbMatrix);
 
             // order by low entropy
             topicData.Add(entropyList
-                .Select(x => new Tuple<string, double, double[]>(x.Item2, (1.0 - x.Item3), x.Item5))
-                .OrderByDescending(x => x.Item2)
+                .OrderBy(x => x.Item3)
                 .Take(summryItemCount)
                 .Select(x => new JsonType.WP {
-                    w = x.Item1,
-                    p = x.Item2,
+                    w = x.Item2,
+                    p = x.Item3,
                     x = true,
-                    u = x.Item3.Select((v, idx) => (v >= threshold[idx])).Count(f => f),
+                    u = x.Item6,
                 })
                 .ToArray());
 
             // order by low entropy * propability
             topicData.Add(entropyList
-                .Select(x => new Tuple<string, double, double[]>(x.Item2, (1.0 - x.Item3) * x.Item4, x.Item5))
-                .OrderByDescending(x => x.Item2)
+                .OrderByDescending(x => (1.0 - x.Item3) * x.Item4)
                 .Take(summryItemCount)
                 .Select(x => new JsonType.WP {
-                    w = x.Item1,
-                    p = x.Item2,
+                    w = x.Item2,
+                    p = x.Item3,
                     x = true,
-                    u = x.Item3.Select((v, idx) => (v >= threshold[idx])).Count(f => f),
-               })
+                    u = x.Item6,
+                })
                 .ToArray());
 
             // order by high entropy
@@ -164,22 +178,21 @@ namespace Ribbon.PostProcessor
                 .Take(summryItemCount)
                 .Select(x => new JsonType.WP {
                     w = x.Item2,
-                    p = x.Item4,
+                    p = x.Item3,
                     x = true,
-                    u = x.Item5.Select((v, idx) => (v >= threshold[idx])).Count(f => f),
+                    u = x.Item6,
                 })
                 .ToArray());
 
             // order by high entropy * probability
             topicData.Add(entropyList
-                .Select(x => new Tuple<string, double, double[]>(x.Item2, x.Item3 * x.Item4, x.Item5))
-                .OrderByDescending(x => x.Item2)
+                .OrderByDescending(x => x.Item3 * x.Item4)
                 .Take(summryItemCount)
                 .Select(x => new JsonType.WP {
-                    w = x.Item1,
-                    p = x.Item2,
+                    w = x.Item2,
+                    p = x.Item3,
                     x = true,
-                    u = x.Item3.Select((v, idx) => (v >= threshold[idx])).Count(f => f),
+                    u = x.Item6,
                 })
                 .ToArray());
 
@@ -190,10 +203,9 @@ namespace Ribbon.PostProcessor
             }
             var outputOrder = indexList.Select(x => new Tuple<int, double>(x, topicProbs[x])).OrderByDescending(x => x.Item2).Select(x => x.Item1).ToArray();
 
-            var usedFlagCounts = wordProbMatrix.Select(x => x.Value.Where((p, idx) => p >= threshold[idx]).Count()).Where(x => x > 0);
-            this.maxTopicCount = usedFlagCounts.Max();
-            this.averateTopicCount = usedFlagCounts.Average(x => (double)x);
-            this.wordCount = usedFlagCounts.Count();
+            this.maxTopicCount = entropyList.Max(x => x.Item6);
+            this.averateTopicCount = entropyList.Average(x => (double)x.Item6);
+            this.wordCount = entropyList.Count(x => x.Item6 > 0);
 
             for (int topic = 0; topic < topicCount; ++topic)
             {
@@ -201,20 +213,19 @@ namespace Ribbon.PostProcessor
 
                 this.topicInfo.Add(new JsonType.TI
                 {
-                    dev = threshold[topicIndex],
-                    wc = wordProbMatrix.Select(x => (x.Value[topicIndex] >= threshold[topicIndex])).Where(f => f).Count()
-                }); ;
+                    dev = 0.0, // unknown
+                    wc = entropyList.Count(x => x.Item7[topicIndex] >= x.Item5),
+                });
 
-                var sortByProb = wordProbMatrix
-                    .Select(x => new Tuple<int, double, double[]>(x.Key, x.Value[topicIndex] * (1.0 - entropyDict[x.Key].Item3), x.Value))
-                    .OrderByDescending(x => x.Item2)
+                var sortByProb = entropyList
+                    .OrderByDescending(x => x.Item7[topicIndex] * (1.0 - x.Item3))
                     .Take(summryItemCount)
                     .Select(x => new JsonType.WP
                     {
-                        w = id2word(x.Item1),
-                        p = x.Item2,
-                        x = (x.Item2 >= threshold[topicIndex]),
-                        u = x.Item3.Select((v, idx) => (v >= threshold[idx])).Where(f => f).Count(),
+                        w = x.Item2,
+                        p = x.Item7[topicIndex],
+                        x = (x.Item7[topicIndex] >= x.Item5),
+                        u = x.Item6,
                     });
 
                 topicData.Add(sortByProb.ToArray());
@@ -244,5 +255,25 @@ namespace Ribbon.PostProcessor
             Shared.TopicModelHandler.DoubleForEach(deviation, (x, idx) => singleDeviation + average);
             return deviation;
         }
+
+        Dictionary<int, double> CalcStandardDeviation2(Dictionary<int, double[]> wordProbMatrix)
+        {
+            var result = new Dictionary<int, double>();
+            foreach (var kv in wordProbMatrix)
+            {
+                var average = kv.Value.Average();
+                var denomi = 1.0 / (double)kv.Value.Length;
+                var sqrSum = kv.Value.Select(x =>
+                {
+                    var diff = x - average;
+                    return diff * diff * denomi;
+                }).Sum();
+                var threadshould = average + Math.Sqrt(sqrSum) * 1.0; // Standard deviation 60.
+
+                result.Add(kv.Key, threadshould);
+            }
+            return result;
+        }
+
     }
 }
