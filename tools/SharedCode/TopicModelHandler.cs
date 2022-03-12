@@ -667,7 +667,7 @@ namespace Ribbon.Shared
                 @"^どの,連体詞,|" +
                 @"^さらに,副詞,|" +
                 @"^もちろん,副詞,|" +
-                @"^情報,名詞," +  // too frequent word
+                // @"^情報,名詞," +  // too frequent word
             ")");
 
         public static bool isTargetWord(string word)
