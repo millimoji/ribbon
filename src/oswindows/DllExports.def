@@ -1,0 +1,11 @@
+LIBRARY RibbonIME
+EXPORTS
+	DllGetClassObject		PRIVATE
+	DllCanUnloadNow			PRIVATE
+	DllRegisterServer		PRIVATE
+	DllUnregisterServer		PRIVATE
+
+	Hello					PRIVATE
+	CreateSystemDictionary	PRIVATE
+	DumpSystemDictionary	PRIVATE
+	CreatePhraseList		PRIVATE

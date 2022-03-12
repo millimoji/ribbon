@@ -1,0 +1,24 @@
+{
+   "background": {
+      "scripts": [ "imebridge.js", "imecore.js", "imesetup.js" ]
+   },
+   "description": "Ribbon IME for technical experiment",
+   "icons": {
+      "128": "icon128.png"
+   },
+   "input_components": [ {
+      "description": "Ribbon IME for technical experiment",
+      "id": "ribbon_ime_for_technical_experiment",
+      "language": "en-US",
+      "layouts": [ "us::eng" ],
+      "name": "Ribbon IME under developing",
+      "type": "ime"
+   } ],
+   "manifest_version": 2,
+   "minimum_chrome_version": "22",
+   "name": "Ribbon IME for technical experiment",
+   "short_name": "Ribbon IME",
+   "permissions": [ "input" ],
+   "version": "0.0.0.1",
+   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
+}

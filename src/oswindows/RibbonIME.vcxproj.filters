@@ -1,0 +1,241 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="DllExports.cpp" />
+    <ClCompile Include="PrecompileHeader.cpp" />
+    <ClCompile Include="TsfClient\CompositionProcessorEngine.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\KeyHandler.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\KeyStateCategory.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\RegKey.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\RibbonIMEBaseStructure.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfActiveLanguageProfileNotifySink.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfCandidateList.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfCandidateListUIPresenter.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfCandidateString.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfCompartment.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfComposition.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfDisplayAttributeInfo.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfDisplayAttributeProvider.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfEditSession.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfEndComposition.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfEnumDisplayAttributeInfo.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfEnumTfCandidates.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfFunctionProviderSink.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfGetTextExtentEditSession.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfInputProcessorProfile.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfKeyEventSink.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfKeyHandlerEditSession.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfLanguageBar.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfSearchCandidateProvider.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfStartComposition.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfTextEditSink.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfTextLayoutSink.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfThreadFocusSink.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TfThreadMgrEventSink.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TipGlobals.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TipRegister.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\TipRibbonIME.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\UIBaseWindow.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\UIButtonWindow.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\UICandidateWindow.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\UIDisplayAttribute.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\UIScrollBarWindow.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+    <ClCompile Include="TsfClient\UIShadowWindow.cpp">
+      <Filter>TsfClient</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="TsfClient">
+      <UniqueIdentifier>{0fe9022c-2493-4ffd-9d33-8ff9761cebd8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{0fa6990e-03f1-45b5-ab4b-0e8823f25769}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="TsfClient\CompositionProcessorEngine.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\KeyStateCategory.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\RegKey.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\RIbbonIMEBaseStructure.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\RIbbonIMEStructureArray.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfCandidateList.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfCandidateListUIPresenter.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfCandidateString.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfCompartment.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfDisplayAttributeInfo.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfEditSession.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfEnumDisplayAttributeInfo.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfEnumTfCandidates.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfGetTextExtentEditSession.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfInputProcessorProfile.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfKeyHandlerEditSession.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfLanguageBar.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfSearchCandidateProvider.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TfTextLayoutSink.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TipDefine.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TipGlobals.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TipPrivate.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\TipRibbonIME.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\UIBaseWindow.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\UIButtonWindow.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\UICandidateWindow.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\UIScrollBarWindow.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="TsfClient\UIShadowWindow.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="TsfClient\TfEditSessionRibbon.h">
+      <Filter>TsfClient</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="DllExports.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="DllExports.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Resources\ImeModeOff.ico">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="Resources\ImeModeOn.ico">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="Resources\ImeProgram.ico">
+      <Filter>Resources</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resources\Resource.rc">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

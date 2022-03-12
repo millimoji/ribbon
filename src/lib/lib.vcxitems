@@ -1,0 +1,91 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{1eca30ff-44a8-43f4-80bb-1a7dcbe225fe}</ItemsProjectGuid>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\containers.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\corelib.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\refstring.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\settings.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\sipkeydef.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\textutils.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\DictionaryCompiler.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\DictionaryConstructor.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\DoubleArray.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\LangModelCalc.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\LexiconReader.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\LinearKmeans.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\PredictionCache.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\Complementer.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\Decoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\DictionaryReader.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\dumper\DictionaryDumper.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\phraselist\PhraseCounter.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\phraselist\PhraseListMain.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\Transliterator.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)external\json11\json11wrap.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)history\HistoryManager.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)history\HistoryReuser.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)history\HistoryStore.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\EditLine.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\EditFunctions.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\en.LiteralUtility.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\InputModel.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\ja.LiteralConvert.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\KeyEventProcessor.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\SymEmojiList.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\TransliterationAdapter.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\containers.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\exception.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\interface.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\platformlib.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\refstring.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\settings.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\sipkeydef.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\textutils.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\threadpool.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\uuid.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\wcharconst.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\DictionaryCompiler.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\DictionaryConstructor.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\DoubleArray.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\LangModelCalc.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\LexiconReader.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\LinearKmeans.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\PredictionCache.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\Complementer.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\Decoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\DictionaryFormat.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\DictionaryReader.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\phraselist\PhraseCounter.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\Transliterator.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)external\json11\json11.hpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\flexiblebin.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)history\HistoryManager.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)history\HistoryReuser.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)history\HistoryStruct.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)history\HistoryStore.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\EditLine.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\EditFunctions.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\IEditContext.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\InputModel.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\KeyEventProcessor.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\LiteralConvert.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\SymEmojiList.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\TransliterationAdapter.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)pch.h" />
+  </ItemGroup>
+</Project>

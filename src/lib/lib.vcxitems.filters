@@ -1,0 +1,247 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="corelib">
+      <UniqueIdentifier>{1ab51121-53f2-4baa-921f-7a02901c086b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="inputmodel">
+      <UniqueIdentifier>{8f671b37-ecfc-4cd6-bcd9-5dc8e9440d2f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dictionary">
+      <UniqueIdentifier>{94a46276-6d82-4c3c-8311-e4d931394b0f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dictionary\compiler">
+      <UniqueIdentifier>{3083c1dd-4807-407c-9b35-a531d79a9189}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dictionary\dumper">
+      <UniqueIdentifier>{3cd15e08-6314-4f07-b7cc-86c24d0305ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external">
+      <UniqueIdentifier>{7567a261-5580-4eb3-8955-d7d590bfe82d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\json11">
+      <UniqueIdentifier>{d9701e36-2b3a-43a4-9d8c-9f5beddb946d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dictionary\phraselist">
+      <UniqueIdentifier>{34e9e154-f56a-42fa-b014-df7e28c4acac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="history">
+      <UniqueIdentifier>{b0bee2c5-57ed-4531-bbcc-52d9544d8f82}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\containers.cpp">
+      <Filter>corelib</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\corelib.cpp">
+      <Filter>corelib</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\refstring.cpp">
+      <Filter>corelib</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\settings.cpp">
+      <Filter>corelib</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\Decoder.cpp">
+      <Filter>dictionary</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\DictionaryReader.cpp">
+      <Filter>dictionary</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\Transliterator.cpp">
+      <Filter>dictionary</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\DictionaryCompiler.cpp">
+      <Filter>dictionary\compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\DictionaryConstructor.cpp">
+      <Filter>dictionary\compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\DoubleArray.cpp">
+      <Filter>dictionary\compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\LangModelCalc.cpp">
+      <Filter>dictionary\compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\LexiconReader.cpp">
+      <Filter>dictionary\compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\LinearKmeans.cpp">
+      <Filter>dictionary\compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\dumper\DictionaryDumper.cpp">
+      <Filter>dictionary\dumper</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\textutils.cpp">
+      <Filter>corelib</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)external\json11\json11wrap.cpp">
+      <Filter>external\json11</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\InputModel.cpp">
+      <Filter>inputmodel</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\phraselist\PhraseCounter.cpp">
+      <Filter>dictionary\phraselist</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\phraselist\PhraseListMain.cpp">
+      <Filter>dictionary\phraselist</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\compiler\PredictionCache.cpp">
+      <Filter>dictionary\compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\EditLine.cpp">
+      <Filter>inputmodel</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)dictionary\Complementer.cpp">
+      <Filter>dictionary</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)history\HistoryStore.cpp">
+      <Filter>history</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)history\HistoryReuser.cpp">
+      <Filter>history</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)history\HistoryManager.cpp">
+      <Filter>history</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)corelib\sipkeydef.cpp">
+      <Filter>corelib</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\EditFunctions.cpp">
+      <Filter>inputmodel</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\ja.LiteralConvert.cpp">
+      <Filter>inputmodel</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\SymEmojiList.cpp">
+      <Filter>inputmodel</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\KeyEventProcessor.cpp">
+      <Filter>inputmodel</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\TransliterationAdapter.cpp">
+      <Filter>inputmodel</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)inputmodel\en.LiteralUtility.cpp">
+      <Filter>inputmodel</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\containers.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\exception.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\interface.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\platformlib.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\refstring.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\settings.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\threadpool.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\uuid.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\wcharconst.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\LiteralConvert.h">
+      <Filter>inputmodel</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\InputModel.h">
+      <Filter>inputmodel</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\Decoder.h">
+      <Filter>dictionary</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\DictionaryFormat.h">
+      <Filter>dictionary</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\DictionaryReader.h">
+      <Filter>dictionary</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\Transliterator.h">
+      <Filter>dictionary</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\DictionaryCompiler.h">
+      <Filter>dictionary\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\DictionaryConstructor.h">
+      <Filter>dictionary\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\DoubleArray.h">
+      <Filter>dictionary\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\LangModelCalc.h">
+      <Filter>dictionary\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\LexiconReader.h">
+      <Filter>dictionary\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\LinearKmeans.h">
+      <Filter>dictionary\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)pch.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\textutils.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)external\json11\json11.hpp">
+      <Filter>external\json11</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\phraselist\PhraseCounter.h">
+      <Filter>dictionary\phraselist</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\compiler\PredictionCache.h">
+      <Filter>dictionary\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)dictionary\Complementer.h">
+      <Filter>dictionary</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\EditLine.h">
+      <Filter>inputmodel</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\flexiblebin.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)history\HistoryStruct.h">
+      <Filter>history</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)history\HistoryStore.h">
+      <Filter>history</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)history\HistoryReuser.h">
+      <Filter>history</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)history\HistoryManager.h">
+      <Filter>history</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)corelib\sipkeydef.h">
+      <Filter>corelib</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\IEditContext.h">
+      <Filter>inputmodel</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\EditFunctions.h">
+      <Filter>inputmodel</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\SymEmojiList.h">
+      <Filter>inputmodel</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\KeyEventProcessor.h">
+      <Filter>inputmodel</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)inputmodel\TransliterationAdapter.h">
+      <Filter>inputmodel</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
