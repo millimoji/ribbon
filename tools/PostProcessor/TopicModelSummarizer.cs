@@ -112,7 +112,8 @@ namespace Ribbon.PostProcessor
             var entropyList = wordProbMatrix
                 .Select(kv =>
                 {
-                    Shared.TopicModelHandler.DoubleForEach(normalizeWork, (double x, int idx) => (topicProbs[idx] * kv.Value[idx]));
+                    Shared.TopicModelHandler.DoubleForEach(normalizeWork,
+                        (double x, int idx) => Math.Max(topicProbs[idx] * kv.Value[idx], 1.0 / float.MaxValue));
                     var sum = normalizeWork.Sum();
                     var pLogPs = normalizeWork.Select(l =>
                     {
@@ -121,9 +122,13 @@ namespace Ribbon.PostProcessor
                         return pLogP;
                     });
                     var entropy = -pLogPs.Sum() / logTC;
-                    if (entropy > 1.0)
+                    if (entropy > 1.001)
                     {
                         throw new Exception("Invalid range");
+                    }
+                    if (double.IsNaN(entropy) || double.IsInfinity(entropy))
+                    {
+                        throw new Exception("entropy is not number");
                     }
                     return new Tuple<int, string, double, double, double[]>(kv.Key, id2word(kv.Key), entropy, sum, kv.Value);
                 });
@@ -235,12 +240,12 @@ namespace Ribbon.PostProcessor
                 Shared.TopicModelHandler.DoubleForEach(deviation, (x, idx) =>
                 {
                     var diff = kv.Value[idx] - average;
-                return x + (diff * diff);
+                    return x + (diff * diff);
                 });
             }
 
             // try use single deviation and distribution.
-            var singleDeviation = Math.Sqrt(deviation.Sum() / (double)wordProbMatrix.Count / (double)deviation.Length) * 0.8;  // TO BE adjusted
+            var singleDeviation = Math.Sqrt(deviation.Sum() / (double)wordProbMatrix.Count / (double)deviation.Length) * 0.1;  // TO BE adjusted
             Shared.TopicModelHandler.DoubleForEach(deviation, (x, idx) => singleDeviation + average);
             return deviation;
         }
