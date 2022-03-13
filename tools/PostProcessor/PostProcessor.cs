@@ -22,12 +22,12 @@ namespace Ribbon.PostProcessor
             Shared.FileOperation.SlideDataFile(targetFiles, Constants.workingFolder);
 
             var nGramStore = new Shared.NGramStore(Constants.workingFolder);
-            var totalCounts = nGramStore.LoadFromFile(10 /* cutout */);
+            var loadedCoutns = nGramStore.LoadFromFile(10 /* short cutout */);
 
             var posListMaker = new PosListMaker(Constants.workingFolder);
             posListMaker.OutputPosBigram(nGramStore);
 
-            this.FindPhraseAndSave(nGramStore, totalCounts);
+            this.FindPhraseAndSave(nGramStore, loadedCoutns);
 
             this.SummarizeTopicModel(nGramStore);
 

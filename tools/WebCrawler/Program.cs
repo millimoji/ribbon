@@ -21,8 +21,8 @@ namespace Ribbon.WebCrawler
             public HashSet<string> referenceUrls = new HashSet<string>();
         }
 
-        const int saveInternvalHour = 6;
-        const int exitIntervalHour = 24;
+        const int saveInternvalHour = 48; // 6;
+        const int exitIntervalHour = 31 * 24; // 24;
         const int parallelDownload = 10;
 
         Shared.MorphAnalyzer m_morphAnalyzer = new Shared.MorphAnalyzer(Constants.workingFolder);
@@ -161,7 +161,7 @@ namespace Ribbon.WebCrawler
                     if (m_nGraphStore.ShouldFlush())
                     {
                         this.lastSavedTime = DateTime.Now;
-                        m_nGraphStore.SaveFile(2);
+                        m_nGraphStore.SaveFile(2, false); // TODO: consider
                         m_nGraphStore.LoadFromFile();
                         Shared.FileOperation.RunPostProcessor();
                     }
