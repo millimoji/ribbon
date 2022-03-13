@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.32002.261
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32228.430
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebCrawler", "WebCrawler\WebCrawler.csproj", "{3536AFF3-F3F0-49D4-BC63-CBA4B7843277}"
 EndProject
@@ -9,13 +9,14 @@ Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "SharedCode", "SharedCode\Sh
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PostProcessor", "PostProcessor\PostProcessor.csproj", "{504CB11B-68B2-4E80-8D45-D7D975EB3F7E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmojiCsvMaker", "EmojiCsvMaker\EmojiCsvMaker.csproj", "{8F13268D-8678-47DB-A4A8-25B07D243AF8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CharListMaker", "CharListMaker\CharListMaker.csproj", "{8F13268D-8678-47DB-A4A8-25B07D243AF8}"
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		SharedCode\SharedCode.projitems*{3536aff3-f3f0-49d4-bc63-cba4b7843277}*SharedItemsImports = 4
 		SharedCode\SharedCode.projitems*{41f4032d-fd7e-4d1d-a6f6-f0e5bee42cfa}*SharedItemsImports = 13
 		SharedCode\SharedCode.projitems*{504cb11b-68b2-4e80-8d45-d7d975eb3f7e}*SharedItemsImports = 4
+		SharedCode\SharedCode.projitems*{8f13268d-8678-47db-a4a8-25b07d243af8}*SharedItemsImports = 5
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

@@ -47,5 +47,10 @@ namespace Ribbon.Shared
         {
             return StringConvert(str, dwMapFlags.LCMAP_FULLWIDTH);
         }
+
+        public static string HiraToKata(this string str)
+        {
+            return StringConvert(str, dwMapFlags.LCMAP_KATAKANA | dwMapFlags.LCMAP_FULLWIDTH);
+        }
     }
 }

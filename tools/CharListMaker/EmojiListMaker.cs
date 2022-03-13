@@ -1,27 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
-namespace EmojiCsvMaker
+namespace Ribbon.CharListMaker
 {
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            Console.WriteLine("Hello World!");
-
-            var emojiConv = new EmojiCsvMaker(
-                "..\\..\\..\\..\\emoji\\",
-                "..\\..\\..\\..\\script\\");
-
-            emojiConv.DoConvert(
-                new string[] { "emoji-sequences.txt", "emoji-zwj-sequences.txt" },
-                "all-emoji.csv");
-        }
-    }
-
-    class EmojiCsvMaker
+    internal class EmojiListMaker
     {
         static string emojiPos = ",5,5,8196,記号,絵文字,*,*,*,*,";
         static string emojiPosUnq = ",5,5,9196,記号,絵文字,*,*,*,*,";
@@ -34,7 +21,7 @@ namespace EmojiCsvMaker
         Regex isHexString = new Regex(@"^[0-9A-Fa-z]+$");
         Regex isVariationSelector = new Regex(@"^[\uFE00-\uFE0F]$");
 
-        public EmojiCsvMaker(string sourceDir, string outputDir)
+        public EmojiListMaker(string sourceDir, string outputDir)
         {
             this.sourceDir = sourceDir;
             this.outputDir = outputDir;

@@ -15,7 +15,8 @@ copy /y _onlytagging.csv %MECABDICTDIR%
 copy /y user.csv      %MECABDICTDIR%
 copy /y overwrite.csv %MECABDICTDIR%
 copy /y unk.def       %MECABDICTDIR%
-copy /y all-emoji.csv %MECABDICTDIR%
+copy /y _emoji.csv    %MECABDICTDIR%
+copy /y tankanji.csv  %MECABDICTDIR%
 copy /y overwrite-auxil.csv %MECABDICTDIR%\auxil.csv
 copy /y overwrite-filler.csv %MECABDICTDIR%\filler.csv
 
