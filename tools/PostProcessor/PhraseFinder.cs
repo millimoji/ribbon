@@ -358,7 +358,7 @@ namespace Ribbon.PostProcessor
 
 
         private static Regex matchFiller = new Regex(@",フィラー,");
-        private static Regex matchNoReading = new Regex(@",\*,\*$");
+        private static Regex matchNoReading = new Regex(@",\*,\*$|,記号,漢字,");
         private static Regex matchNoTargeting = new Regex(@"(,名詞,固有名詞,人名,姓,|,名詞,固有名詞,人名,名,|,記号,)");
         private static Regex followingType = new Regex(@"(,助詞,|,助動詞,|,非自立,|,接尾,)");
         private static Regex lastDisallowedType = new Regex(@"(,接頭詞,)");
