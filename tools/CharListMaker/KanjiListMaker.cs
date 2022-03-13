@@ -31,7 +31,7 @@ namespace Ribbon.CharListMaker
         Regex isNumber = new Regex(@"^[0-9]+$");
         Regex isKatakana = new Regex(@"^[ァ-ヶー]+$");
         Regex isHiragana = new Regex(@"^[ぁ-ゖー]+$");
-        string dictFields = ",5,5,8196,記号,漢字,*,*,*,*,*,";
+        string dictFields = ",5,5,16000,記号,漢字,*,*,*,*,*,";
 
         public void Convert(string fileName, StreamWriter outputStream)
         {
