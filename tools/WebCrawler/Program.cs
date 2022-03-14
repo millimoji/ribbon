@@ -21,7 +21,7 @@ namespace Ribbon.WebCrawler
             public HashSet<string> referenceUrls = new HashSet<string>();
         }
 
-        const int saveInternvalHour = 6;
+        const int saveInternvalHour = 24 * 6; // disabled for now
         const int exitIntervalHour = 24;
         const int parallelDownload = 10;
 
@@ -32,7 +32,7 @@ namespace Ribbon.WebCrawler
         private Random random = new Random();
         private DateTime lastSavedTime = DateTime.Now;
         private DateTime programStartTime = DateTime.Now;
-        private bool isEveryHourMode = false; // disabled
+        private bool isEveryHourMode = false; // disabled fo rnow
         private bool exitProgram = false;
 
         const int maxCotentHistory = 20000;
