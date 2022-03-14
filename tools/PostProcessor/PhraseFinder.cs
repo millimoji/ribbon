@@ -68,6 +68,7 @@ namespace Ribbon.PostProcessor
 
         public PhraseSummary FindAndSave(string fileName, string summaryFileName, Shared.NGramStore nGramStore, long [] totalCounts)
         {
+            var nGramList = nGramStore.nGramList;
             var wordIdMappter = nGramStore.GetWordIdMapper();
             this.bosId = wordIdMappter.Item2("[BOS]");
             this.eosId = wordIdMappter.Item2("[EOS]");
@@ -223,15 +224,17 @@ namespace Ribbon.PostProcessor
         void StoreWords(Shared.NGramStore nGramStore, long [] totalCounts)
         {
             var id2text = nGramStore.GetWordIdMapper().Item1;
-            for (int iGram = 0; iGram < Constants.maxNGram; ++iGram)
+            var nGramList = nGramStore.nGramList;
+            for (int iGram = 0; iGram < nGramList.Length; ++iGram)
             {
-                var totalCountsInDouble = (double)Math.Max(totalCounts[iGram], 1);
-                var nGramList = nGramStore.wordTreeRoot.GetNgramList(iGram + 1);
-                foreach (var nGram in nGramList)
+                var nGram = nGramList[iGram];
+                var totalCountsInDouble = totalCounts[iGram];
+                foreach (var wordList in nGram)
                 {
-                    var intArray = nGram.GetNgram().ToArray();
-                    var forwardItem = this.StoreWordRecv(this.forward, 0, iGram, intArray, nGram.shortCount, id2text, false);
-                    var backwordItem = this.StoreWordRecv(this.backward, iGram, 0, intArray, nGram.shortCount, id2text, true);
+                    var intArray = new int[] { wordList.Key.Item1, wordList.Key.Item2, wordList.Key.Item3, wordList.Key.Item4, wordList.Key.Item5, wordList.Key.Item6, wordList.Key.Item7 };
+                    Array.Resize(ref intArray, iGram + 1);
+                    var forwardItem = this.StoreWordRecv(this.forward, 0, iGram, intArray, wordList.Value, id2text, false);
+                    var backwordItem = this.StoreWordRecv(this.backward, iGram, 0, intArray, wordList.Value, id2text, true);
                     forwardItem.pairItem = backwordItem;
                     backwordItem.pairItem = forwardItem;
                     forwardItem.phraseProb = (double)forwardItem.count / totalCountsInDouble;

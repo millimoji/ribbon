@@ -21,8 +21,8 @@ namespace Ribbon.WebCrawler
             public HashSet<string> referenceUrls = new HashSet<string>();
         }
 
-        const int saveInternvalHour = 48; // 6;
-        const int exitIntervalHour = 31 * 24; // 24;
+        const int saveInternvalHour = 6;
+        const int exitIntervalHour = 24;
         const int parallelDownload = 10;
 
         Shared.MorphAnalyzer m_morphAnalyzer = new Shared.MorphAnalyzer(Constants.workingFolder);
@@ -60,26 +60,18 @@ namespace Ribbon.WebCrawler
             // Loading the last result
             m_nGraphStore.LoadFromFile();
 
-            Console.WriteLine("Picking up URLs");
+            var downloadResult = new DownloadTaskResult();
             var targetUrls = m_dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
             if (targetUrls.Count == 0)
             {
                 targetUrls.Add("https://www.sankei.com/");
             }
 
-            DownloadTaskResult downloadResult = LoadWebAndAnalyze(targetUrls).GetAwaiter().GetResult();
-
             while (!exitProgram)
             {
-                Console.WriteLine("Picking up URLs");
-                targetUrls = m_dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
-
                 if (targetUrls.Count == 0)
                 {
-                    foreach (var url in this.focusedDomains)
-                    {
-                        targetUrls.Add(url);
-                    }
+                    targetUrls = this.focusedDomains.ToList();
                 }
 
                 var dbTask = UpdateDatabase(downloadResult);
@@ -88,6 +80,7 @@ namespace Ribbon.WebCrawler
                 Task.WhenAll(loadTask, dbTask).GetAwaiter().GetResult();
 
                 downloadResult = loadTask.Result;
+                targetUrls = dbTask.Result;
             }
         }
 
@@ -161,7 +154,7 @@ namespace Ribbon.WebCrawler
                     if (m_nGraphStore.ShouldFlush())
                     {
                         this.lastSavedTime = DateTime.Now;
-                        m_nGraphStore.SaveFile(2, false); // TODO: consider
+                        m_nGraphStore.SaveFile(2);
                         m_nGraphStore.LoadFromFile();
                         Shared.FileOperation.RunPostProcessor();
                     }
@@ -195,9 +188,9 @@ namespace Ribbon.WebCrawler
             });
         }
 
-        Task UpdateDatabase(DownloadTaskResult prevResult)
+        Task<List<string>> UpdateDatabase(DownloadTaskResult prevResult)
         {
-            return Task.Run(() =>
+            return Task<List<string>>.Run(() =>
             {
                 var startTime = DateTime.Now;
                 Console.WriteLine($">>> Begin Update DB: Store URLs: {prevResult.referenceUrls.Count}, Mark URLs: {prevResult.pageUrls.Count}");
@@ -223,7 +216,14 @@ namespace Ribbon.WebCrawler
                 }
 
                 m_dbAcccessor.StoreUrlsAndMarkRead(addingUrls, prevResult.pageUrls);
-                Console.WriteLine($"<<< End Update DB: Elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, Store URLs: {prevResult.referenceUrls.Count}, Mark URLs: {prevResult.pageUrls.Count}");
+
+                var updateFinishTime = DateTime.Now;
+
+                var targetUrls = m_dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
+
+                Console.WriteLine($"<<< End Update:{(updateFinishTime - startTime).TotalSeconds}, Pickup:{(DateTime.Now - updateFinishTime).TotalSeconds}, Store URLs: {prevResult.referenceUrls.Count}, Mark URLs: {prevResult.pageUrls.Count}");
+
+                return targetUrls;
             });
         }
     }

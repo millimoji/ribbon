@@ -1,167 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 
 
 namespace Ribbon.Shared
 {
-    class WordIdMapper
-    {
-        readonly Dictionary<string, int> wordHash = new Dictionary<string, int>(StringComparer.Ordinal); // string to ID
-        readonly Dictionary<int, string> idWordHash = new Dictionary<int, string>(); // ID to string
-
-        public int Word2id(string word, bool isAdd)
-        {
-            int id;
-            if (this.wordHash.TryGetValue(word, out id))
-            {
-                return id;
-            }
-            if (!isAdd)
-            {
-                return -1;
-            }
-            id = this.wordHash.Count + 1;
-            this.wordHash.Add(word, id);
-            this.idWordHash.Add(id, word);
-            return id;
-        }
-
-        public string Id2word(int id)
-        {
-            string word;
-            if (this.idWordHash.TryGetValue(id, out word))
-            {
-                return word;
-            }
-            return null;
-        }
-    }
-
-    class WordTreeNode
-    {
-        public Dictionary<int, WordTreeNode> children = null;
-        public WordTreeNode parent = null;
-        public int wordId = -1;
-        public long shortCount = 0; // count for short term
-        public long longCount = 0; // count for long term
-
-        public void IncrementRecursive(List<int> wordList, int topIndex, int endIndex)
-        {
-            if (this.children == null)
-            {
-                this.children = new Dictionary<int, WordTreeNode>();
-            }
-            var targetId = wordList[topIndex];
-            WordTreeNode child;
-            if (!children.TryGetValue(targetId, out child))
-            {
-                child = new WordTreeNode();
-                child.parent = this;
-                child.wordId = targetId;
-                this.children.Add(targetId, child);
-            }
-            child.shortCount++;
-            child.longCount++;
-
-            if (topIndex < endIndex)
-            {
-                child.IncrementRecursive(wordList, topIndex + 1, endIndex);
-            }
-        }
-
-        public void SetCount(int [] wordList, int topIndex, int endIndex, long longCount, long shortCount)
-        {
-            if (this.children == null)
-            {
-                this.children = new Dictionary<int, WordTreeNode>();
-            }
-            var targetId = wordList[topIndex];
-            WordTreeNode child;
-            if (!children.TryGetValue(targetId, out child))
-            {
-                child = new WordTreeNode();
-                child.parent = this;
-                child.wordId = targetId;
-                this.children.Add(targetId, child);
-            }
-            if (topIndex < endIndex)
-            {
-                child.SetCount(wordList, topIndex + 1, endIndex, longCount, shortCount);
-            }
-            else
-            {
-                child.longCount = longCount;
-                child.shortCount = shortCount;
-            }
-        }
-
-
-        public void Reduce(int divNum, bool isShortCount)
-        {
-            if (this.children != null)
-            {
-                foreach (var kv in this.children.ToArray())
-                {
-                    kv.Value.Reduce(divNum, isShortCount);
-                    kv.Value.shortCount /= divNum;
-                    if (!isShortCount)
-                    {
-                        kv.Value.longCount /= divNum;
-                        if (kv.Value.longCount == 0)
-                        {
-                            this.children.Remove(kv.Key);
-                        }
-                    }
-                }
-            }
-        }
-
-        public List<int> GetNgram()
-        {
-            var nGram = new List<int>();
-            this.GetNgramInternal(nGram);
-            return nGram;
-        }
-
-        void GetNgramInternal(List<int> nGram)
-        {
-            if (this.wordId > 0 && this.parent != null)
-            {
-                nGram.Insert(0, this.wordId);
-                this.parent.GetNgramInternal(nGram);
-            }
-        }
-
-        public IEnumerable<WordTreeNode> GetNgramList(int level)
-        {
-            if (this.children == null)
-            {
-                return new WordTreeNode[0];
-            }
-            if (level <= 1)
-            {
-                return this.children.Select(kv => kv.Value);
-            }
-            return this.children.Select(kv => kv.Value.GetNgramList(level - 1)).SelectMany(node => node);
-        }
-    };
-
-
     class NGramStore
     {
-        public WordIdMapper wordIdMapper = new WordIdMapper();
-        public WordTreeNode wordTreeRoot = new WordTreeNode();
-        public readonly int thresholdToDiv2 = 8 * 1000 * 1000;
-
+        Dictionary<string, int> WordHash = new Dictionary<string, int>(StringComparer.Ordinal);
+        List<string> WordList = new List<string>();
+        Object thisLock = new Object();
+        Dictionary<Tuple<int, int, int, int, int, int, int>, long>[] m_nGrams = new Dictionary<Tuple<int, int, int, int, int, int, int>, long>[7]
+        {
+            new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+            new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+            new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+            new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+            new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+            new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+            new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+        };
         Dictionary<Tuple<string, string>, long> m_posBigram;
 
+        const int thresholdToDiv2 = 8000000; // n7gram max
         const string BOS = "[BOS]";
         const string EOS = "[EOS]";
         const string unigramFileName = "unigram.txt";
@@ -171,14 +36,18 @@ namespace Ribbon.Shared
         const string n5gramFileName = "n5gram.txt";
         const string n6gramFileName = "n6gram.txt";
         const string n7gramFileName = "n7gram.txt";
-        const string n8gramFileName = "n8gram.txt";
         const string posBigramFilename = "posbigram.txt";
-        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName, n8gramFileName, posBigramFilename,
+        readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName, posBigramFilename,
             Constants.topicModelFileName, Constants.topicModelSummaryFilename, Constants.mixUnigramlFileName, Constants.mixUnigramSummaryFilename };
 
         TopicModelHandler m_topicModel;
         TopicModelHandler m_mixUnigram;
         string m_workDir;
+
+        public string DateTimeString()
+        {
+            return DateTime.Now.ToString().Replace(' ', '-').Replace('/', '-').Replace(':', '-');
+        }
 
         public NGramStore(string workDir)
         {
@@ -186,13 +55,12 @@ namespace Ribbon.Shared
             m_topicModel = new TopicModelHandler(false /* isMixUnigram */);
             m_mixUnigram = new TopicModelHandler(true /* isMixUnigram */);
         }
-
+        public Dictionary<Tuple<int, int, int, int, int, int, int>, long>[] nGramList { get { return this.m_nGrams;  } }
         public Dictionary<Tuple<string, string>, long> posBigram { get { return m_posBigram; } }
 
         public double ContentFilledRate()
         {
-            int maxNGramCount = this.wordTreeRoot.GetNgramList(Constants.maxNGram).Count();
-            return (double)maxNGramCount / (double)thresholdToDiv2;
+            return (double)this.m_nGrams[6].Count / (double)thresholdToDiv2;
         }
 
         public bool ShouldFlush()
@@ -205,30 +73,50 @@ namespace Ribbon.Shared
             return m_topicModel.CanSave(); // m_mixUnigram
         }
 
-        public void SaveFile(int divNum = -1, bool isShortCount = true)
+        public void SaveFile(int divNum = 1)
         {
-            if (divNum > 0)
-            {
-                this.wordTreeRoot.Reduce(divNum, isShortCount);
-            }
-
             FileOperation.SlideDataFile(this.fileNames, Constants.workingFolder);
 
             for (int nGram = 1; nGram <= Constants.maxNGram; ++nGram)
             {
-                var nGramHashMap = this.wordTreeRoot.GetNgramList(nGram).OrderByDescending(n => n.longCount);
+                var nGramHashMap = m_nGrams[nGram - 1];
 
                 string fileName = fileNames[nGram - 1];
                 using (StreamWriter fileStream = new StreamWriter(m_workDir + fileName, false, Encoding.Unicode))
                 {
-                    foreach (var item in nGramHashMap)
+                    foreach (var item in nGramHashMap.OrderByDescending(item => item.Value))
                     {
-                        if (item.longCount > 0)
+                        long writeCount = item.Value;
+                        if (divNum > 1)
                         {
-                            var nGramByText = item.GetNgram().Select(id => wordIdMapper.Id2word(id)).ToArray();
-                            var outputLine = String.Join("\t", nGramByText) + $"\t{item.longCount}\t{item.shortCount}";
-                            fileStream.WriteLine(outputLine);
+                            if (item.Value == 0)
+                            {
+                                continue; // skip
+                            }
+                            if (item.Value < divNum)
+                            {
+                                if (nGram != 1)
+                                {
+                                    continue; // remove this if not unigram
+                                }
+                                if (!TopicModelHandler.isTargetWord(WordList[item.Key.Item1]))
+                                {
+                                    continue; // remove this if TopicModel does not use
+                                }
+                                // enlong count 1 word life time for topic model with count 0
+                            }
+                            writeCount /= divNum;
                         }
+
+                        string outputLine = WordList[item.Key.Item1] + "\t";
+                        if (nGram >= 2) { outputLine += WordList[item.Key.Item2] + "\t"; }
+                        if (nGram >= 3) { outputLine += WordList[item.Key.Item3] + "\t"; }
+                        if (nGram >= 4) { outputLine += WordList[item.Key.Item4] + "\t"; }
+                        if (nGram >= 5) { outputLine += WordList[item.Key.Item5] + "\t"; }
+                        if (nGram >= 6) { outputLine += WordList[item.Key.Item6] + "\t"; }
+                        if (nGram >= 7) { outputLine += WordList[item.Key.Item7] + "\t"; }
+                        outputLine += writeCount.ToString();
+                        fileStream.WriteLine(outputLine);
                     }
                 }
             }
@@ -241,22 +129,36 @@ namespace Ribbon.Shared
                 }
             }
 
-            m_topicModel.SaveToFile(m_workDir + Constants.topicModelFileName, m_workDir + Constants.topicModelSummaryFilename, (int id) => this.wordIdMapper.Id2word(id));
-            m_mixUnigram.SaveToFile(m_workDir + Constants.mixUnigramlFileName, m_workDir + Constants.mixUnigramSummaryFilename, (int id) => this.wordIdMapper.Id2word(id));
+            m_topicModel.SaveToFile(m_workDir + Constants.topicModelFileName, m_workDir + Constants.topicModelSummaryFilename, (int id) => this.WordList[id]);
+            m_mixUnigram.SaveToFile(m_workDir + Constants.mixUnigramlFileName, m_workDir + Constants.mixUnigramSummaryFilename, (int id) => this.WordList[id]);
         }
 
-        public long[] LoadFromFile(int cutOut = 0)
+        public long [] LoadFromFile(int cutOut = 0)
         {
-            var loadedCounts = new long[Constants.maxNGram];
-            // clear
-            this.wordIdMapper = new WordIdMapper();
-            this.wordTreeRoot = new WordTreeNode();
+            var totalCounts = new long[Constants.maxNGram];
+
+            //
+            this.WordHash = new Dictionary<string, int>(StringComparer.Ordinal);
+            this.WordList = new List<string>();
+            this.m_nGrams = new Dictionary<Tuple<int, int, int, int, int, int, int>, long>[7]
+                {
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
+                };
             this.m_posBigram = new Dictionary<Tuple<string, string>, long>();
             //
 
             for (int nGram = 1; nGram <= Constants.maxNGram; ++nGram)
             {
-                var fileName = fileNames[nGram - 1];
+                var nGramHashMap = m_nGrams[nGram - 1];
+                int[] hashKeyList = new int[Constants.maxNGram];
+
+                string fileName = fileNames[nGram - 1];
                 try
                 {
                     using (StreamReader fileStream = new StreamReader(m_workDir + fileName))
@@ -264,47 +166,33 @@ namespace Ribbon.Shared
                         string line;
                         while ((line = fileStream.ReadLine()) != null)
                         {
-                            string[] nGramFields = line.Split('\t');
-                            if (nGramFields.Length != (nGram + 1) && nGramFields.Length != (nGram + 2))
+                            string[] nGramLine = line.Split('\t');
+                            if (nGramLine.Length == (nGram + 1))
                             {
-                                continue;
-                            }
-                            long longCount = 0;
-                            if (!long.TryParse(nGramFields[nGram], out longCount))
-                            {
-                                continue;
-                            }
+                                long hashValue = 0;
+                                long.TryParse(nGramLine[nGram], out hashValue);
+                                totalCounts[nGram - 1] += hashValue;
+                                if (cutOut > 0)
+                                {
+                                    if (hashValue < cutOut)
+                                    {
+                                        continue;
+                                    }
+                                }
 
-                            long shortCount = longCount;
-                            if (nGramFields.Length == (nGram + 2))
-                            {
-                                if (!long.TryParse(nGramFields[nGram + 1], out shortCount))
+                                hashKeyList[0] = WordToWordId(nGramLine[0], nGram <= 1);
+                                if (nGram >= 2) { hashKeyList[1] = WordToWordId(nGramLine[1], false); }
+                                if (nGram >= 3) { hashKeyList[2] = WordToWordId(nGramLine[2], false); }
+                                if (nGram >= 4) { hashKeyList[3] = WordToWordId(nGramLine[3], false); }
+                                if (nGram >= 5) { hashKeyList[4] = WordToWordId(nGramLine[4], false); }
+                                if (nGram >= 6) { hashKeyList[5] = WordToWordId(nGramLine[5], false); }
+                                if (nGram >= 7) { hashKeyList[6] = WordToWordId(nGramLine[6], false); }
+                                if (hashKeyList.Any(x => x < 0))
                                 {
                                     continue;
                                 }
+                                AddNgram(nGram, hashKeyList, hashValue);
                             }
-
-                            if (cutOut > 0 && longCount < cutOut)
-                            {
-                                continue; // less than cut out
-                            }
-
-                            int[] wordIdList;
-                            if (nGram == 1)
-                            {
-                                wordIdList = new int[1] { this.wordIdMapper.Word2id(nGramFields[0], true) };
-                            }
-                            else
-                            {
-                                wordIdList = nGramFields.Take(nGram).Select(w => this.wordIdMapper.Word2id(w, false)).ToArray();
-                                if (wordIdList.Any(x => x <= 0))
-                                {
-                                    continue; // ignore wrong id;
-                                }
-                            }
-
-                            this.wordTreeRoot.SetCount(wordIdList, 0, (nGram - 1), longCount, shortCount);
-                            loadedCounts[nGram - 1] += shortCount;
                         }
                     }
                 }
@@ -331,32 +219,50 @@ namespace Ribbon.Shared
             catch (Exception) { }
 
             this.m_topicModel.LoadFromFile(this.m_workDir + Constants.topicModelFileName,
-                (string word) => this.wordIdMapper.Word2id(word, false),
-                (int id) => this.wordIdMapper.Id2word(id));
+                (string word) => this.WordToWordId(word, false),
+                (int id) => this.WordList[id]);
             this.m_mixUnigram.LoadFromFile(this.m_workDir + Constants.mixUnigramlFileName,
-                (string word) => this.wordIdMapper.Word2id(word, false),
-                (int id) => this.wordIdMapper.Id2word(id));
+                (string word) => this.WordToWordId(word, false),
+                (int id) => this.WordList[id]);
 
-            return loadedCounts;
+            return totalCounts;
         }
 
         public void AddFromWordArray(List<string> arrayOfWord) // sentence
         {
-            int bosId = this.wordIdMapper.Word2id(BOS, true);
-            int eosId = this.wordIdMapper.Word2id(EOS, true);
+            int[] hashKeyList = new int[arrayOfWord.Count + 2 + 5];
 
-            var idList = arrayOfWord.Select(w => this.wordIdMapper.Word2id(w, true)).Append(eosId).ToList();
-            idList.Insert(0, bosId);
+            hashKeyList[0] = WordToWordId(BOS);
+            hashKeyList[arrayOfWord.Count + 1] = WordToWordId(EOS);
+            hashKeyList[arrayOfWord.Count + 2] = 0;
+            hashKeyList[arrayOfWord.Count + 3] = 0;
+            hashKeyList[arrayOfWord.Count + 4] = 0;
+            hashKeyList[arrayOfWord.Count + 5] = 0;
+            hashKeyList[arrayOfWord.Count + 6] = 0;
 
-            for (int i = 0; i < idList.Count; i++)
+            for (int i = 0; i < arrayOfWord.Count; ++i)
             {
-                this.wordTreeRoot.IncrementRecursive(idList, i, Math.Min(i + Constants.maxNGram - 1, idList.Count - 1));
+                hashKeyList[i + 1] = WordToWordId(arrayOfWord[i]);
+            }
+
+            for (int i = 0; i < (arrayOfWord.Count + 2); ++i)
+            {
+                var shiftKeyList = hashKeyList.Skip(i).Take(Constants.maxNGram).ToArray<int>();
+                int remained = arrayOfWord.Count - i + 2;
+
+                if (remained >= 7) { AddNgram(7, shiftKeyList, 1); }
+                if (remained >= 6) { AddNgram(6, shiftKeyList, 1); }
+                if (remained >= 5) { AddNgram(5, shiftKeyList, 1); }
+                if (remained >= 4) { AddNgram(4, shiftKeyList, 1); }
+                if (remained >= 3) { AddNgram(3, shiftKeyList, 1); }
+                if (remained >= 2) { AddNgram(2, shiftKeyList, 1); }
+                if (remained >= 1) { AddNgram(1, shiftKeyList, 1); }
             }
 
             this.AddPosBigram(arrayOfWord);
 
-            m_topicModel.LearnDocument(arrayOfWord, (string word) => this.wordIdMapper.Word2id(word, false));
-            m_mixUnigram.LearnDocument(arrayOfWord, (string word) => this.wordIdMapper.Word2id(word, false));
+            m_topicModel.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
+            m_mixUnigram.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
         }
 
         public void PrintCurrentState()
@@ -368,8 +274,64 @@ namespace Ribbon.Shared
         public Tuple<Func<int, string>, Func<string, int>> GetWordIdMapper()
         {
             return new Tuple<Func<int, string>, Func<string, int>>(
-                    (int wordId) => this.wordIdMapper.Id2word(wordId),
-                    (string word) => this.wordIdMapper.Word2id(word, false));
+                    (int wordId) => this.WordList[wordId],
+                    (string word) => this.WordToWordId(word, false));
+        }
+
+        int WordToWordId(string word, bool createNew = true)
+        {
+            int wordId;
+            lock (thisLock)
+            {
+                if (WordList.Count == 0)
+                {
+                    WordList.Add("[NULL]");
+                }
+                if (!WordHash.TryGetValue(word, out wordId))
+                {
+                    if (createNew)
+                    {
+                        wordId = WordList.Count;
+                        WordList.Add(word);
+                        WordHash.Add(word, wordId);
+
+                        if (System.Diagnostics.Debugger.IsAttached)
+                        {
+                            if (WordList[wordId] != word)
+                            {
+                                System.Diagnostics.Debugger.Break();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return -1;
+                    }
+                }
+            }
+            return wordId;
+        }
+
+        void AddNgram(int nGram, int[] hashKeyList, long hashKeyValue)
+        {
+            var hashKey = new Tuple<int, int, int, int, int, int, int>(
+                hashKeyList[0],
+                nGram > 1 ? hashKeyList[1] : 0,
+                nGram > 2 ? hashKeyList[2] : 0,
+                nGram > 3 ? hashKeyList[3] : 0,
+                nGram > 4 ? hashKeyList[4] : 0,
+                nGram > 5 ? hashKeyList[5] : 0,
+                nGram > 6 ? hashKeyList[6] : 0);
+
+            var targetHash = m_nGrams[nGram - 1];
+            if (targetHash.ContainsKey(hashKey))
+            {
+                targetHash[hashKey] += hashKeyValue;
+            }
+            else
+            {
+                targetHash.Add(hashKey, hashKeyValue);
+            }
         }
 
         Regex needToHaveDisplay = new Regex(@"^[^,]+,助詞,|^[^,]+,助動詞,|^お,接頭詞,|^ご,接頭詞,|^御,接頭詞,");
