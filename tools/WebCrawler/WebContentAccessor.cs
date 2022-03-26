@@ -14,10 +14,10 @@ namespace Ribbon.WebCrawler
     class HtmlGetter
     {
         static private HttpClient m_httpClient;
-        static private object __lockObject = "lockobject";
+        static private readonly object __lockObject = "lockobject";
 
-        string m_sourceUrl;
-        HtmlDocument m_htmlDoc = new HtmlDocument();
+        readonly string m_sourceUrl;
+        readonly HtmlDocument m_htmlDoc = new HtmlDocument();
 
         public bool Succeeded = false;
         public HashSet<string> JpnTextSet = new HashSet<string>();
@@ -33,8 +33,7 @@ namespace Ribbon.WebCrawler
             {
                 if (m_httpClient == null)
                 {
-                    m_httpClient = new HttpClient();
-                    m_httpClient.Timeout = TimeSpan.FromSeconds(10);
+                    m_httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
 
                     m_httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
                     if (!m_httpClient.DefaultRequestHeaders.Contains("Accept-Language"))
@@ -47,13 +46,13 @@ namespace Ribbon.WebCrawler
             m_sourceUrl = url;
             PageUrls.Add(url);
         }
-        public void DoProcess()
+        public void DoProcess(bool splitAtSentenceBreak)
         {
             m_hasNgWords = false;
             m_suppressWordCount = 0;
 
             DownloadAndBuildHtmlDocument(m_sourceUrl);
-            RetrieveJapaneseText();
+            RetrieveJapaneseText(splitAtSentenceBreak);
             RetrieveAnchorUrls();
 
             if (m_hasNgWords /*|| m_suppressWordCount > SUPPRESS_WORD_THRESHOLD*/)
@@ -87,7 +86,7 @@ namespace Ribbon.WebCrawler
 
                     using (var httpContnt = httpResponse.Content)
                     {
-                        var meditaType = httpContnt.Headers.ContentType == null ? null : httpContnt.Headers.ContentType.MediaType;
+                        var meditaType = httpContnt.Headers.ContentType?.MediaType;
                         if (meditaType == "text/html")
                         {
                             var contentLanguages = httpContnt.Headers.ContentLanguage;
@@ -113,9 +112,9 @@ namespace Ribbon.WebCrawler
             }
         }
 
-        static Regex removeCr = new Regex("[\r|\n|\t|　| ]+");
+        static readonly Regex removeCr = new Regex("[\x00-\x1f]+");
 
-        private void RetrieveJapaneseText()
+        private void RetrieveJapaneseText(bool splitAtSentenceBreak)
         {
             HashSet<string> textSet = new HashSet<string>();
 
@@ -171,22 +170,29 @@ namespace Ribbon.WebCrawler
             }
             if (hasHiraOrKata)
             {
-                textSet.ToList().ForEach(t =>
+                if (splitAtSentenceBreak)
                 {
-                    var textList = sentenceBreakFinder.Replace(t, "$1" + textBreakMarker)
-                        .Split(this.textBreakMarkerArray, StringSplitOptions.RemoveEmptyEntries);
-
-                    textList.ToList().ForEach(x =>
+                    textSet.ToList().ForEach(t =>
                     {
-                        JpnTextSet.Add(x);
+                        var textList = sentenceBreakFinder.Replace(t, "$1" + textBreakMarker)
+                            .Split(this.textBreakMarkerArray, StringSplitOptions.RemoveEmptyEntries);
+
+                        textList.ToList().ForEach(x =>
+                        {
+                            JpnTextSet.Add(x);
+                        });
                     });
-                });
+                }
+                else
+                {
+                    textSet.ToList().ForEach(t => JpnTextSet.Add(t));
+                }
             }
         }
 
-        private static string textBreakMarker = "__Break__Break__";
-        private String[] textBreakMarkerArray = new String[] { textBreakMarker };
-        private Regex sentenceBreakFinder = new Regex(@"([。｡!！?？]+)[　]*", RegexOptions.Singleline);
+        private static readonly string textBreakMarker = "__Break__Break__";
+        private readonly String[] textBreakMarkerArray = new String[] { textBreakMarker };
+        private readonly Regex sentenceBreakFinder = new Regex(@"([。｡!！?？]+)[　]*", RegexOptions.Singleline);
 
         private void RetrieveAnchorUrls()
         {
