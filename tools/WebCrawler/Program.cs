@@ -1,6 +1,9 @@
-﻿using System;
+﻿using Ribbon.Shared;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -8,10 +11,10 @@ namespace Ribbon.WebCrawler
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main(string[] _)
         {
             var me = new Program();
-            me.Run();
+            me.RunCrawlerOnly();
         }
 
         class DownloadTaskResult
@@ -25,20 +28,16 @@ namespace Ribbon.WebCrawler
         const int exitIntervalHour = 24;
         const int parallelDownload = 10;
 
-        Shared.MorphAnalyzer m_morphAnalyzer = new Shared.MorphAnalyzer(Constants.workingFolder);
-        Shared.NGramStore m_nGraphStore = new Shared.NGramStore(Constants.workingFolder);
-        DbAcccessor m_dbAcccessor = new DbAcccessor(Constants.workingFolder);
-
-        private Random random = new Random();
+        private readonly Random random = new Random();
         private DateTime lastSavedTime = DateTime.Now;
-        private DateTime programStartTime = DateTime.Now;
+        private readonly DateTime programStartTime = DateTime.Now;
         private bool isEveryHourMode = false; // disabled fo rnow
         private bool exitProgram = false;
 
         const int maxCotentHistory = 20000;
-        Dictionary<string, DateTime> contentHistoryDate = new Dictionary<string, DateTime>();
+        readonly Dictionary<string, DateTime> contentHistoryDate = new Dictionary<string, DateTime>();
 
-        private string[] focusedDomains = new string[]
+        private readonly string[] focusedDomains = new string[]
         {
             "https://www.asahi.com/",
             "https://www.yomiuri.co.jp/",
@@ -55,13 +54,64 @@ namespace Ribbon.WebCrawler
             // "https://plaza.rakuten.co.jp/",
         };
 
+        void RunCrawlerOnly()
+        {
+            int[] exitHour = new int[] { 7, 15, 23 };
+
+            const bool splitAtSentenceBreak = false;
+            DbAcccessor dbAcccessor = new DbAcccessor(Constants.workingFolder);
+
+            var now = DateTime.Now;
+            var gZipFileName = now.Year.ToString() + now.Month.ToString("D2") + now.Day.ToString("D2") + "-" + now.Hour.ToString("D2") + ".txt.gz";
+
+            using (var gZipWriter = new CompressedStreamWriter(Constants.workingFolder + gZipFileName))
+            {
+                var downloadResult = new DownloadTaskResult();
+                var targetUrls = dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
+                if (targetUrls.Count == 0)
+                {
+                    targetUrls.Add("https://www.sankei.com/");
+                }
+
+                var lastSavedTime = DateTime.Now;
+
+                while (!exitProgram)
+                {
+                    if (targetUrls.Count == 0)
+                    {
+                        targetUrls = this.focusedDomains.ToList();
+                    }
+
+                    var dbTask = UpdateDatabase(downloadResult, dbAcccessor);
+                    var loadTask = LoadWebAndGzip(targetUrls, gZipWriter, splitAtSentenceBreak);
+
+                    Task.WhenAll(loadTask, dbTask).GetAwaiter().GetResult();
+
+                    downloadResult = loadTask.Result;
+                    targetUrls = dbTask.Result;
+
+                    var currentTime = DateTime.Now;
+                    if (exitHour.Any(x => (lastSavedTime.Hour < x && x <= currentTime.Hour))) // Asssuming 1 loop should less than 1 hour
+                    {
+                        exitProgram = true;
+                    }
+                }
+            }
+        }
+
+
         void Run()
         {
+            Shared.MorphAnalyzer morphAnalyzer = new Shared.MorphAnalyzer(Constants.workingFolder);
+            Shared.NGramStore nGramStore = new Shared.NGramStore(Constants.workingFolder);
+            DbAcccessor dbAcccessor = new DbAcccessor(Constants.workingFolder);
+
+            const bool splitAtSentenceBreak = true;
             // Loading the last result
-            m_nGraphStore.LoadFromFile();
+            nGramStore.LoadFromFile();
 
             var downloadResult = new DownloadTaskResult();
-            var targetUrls = m_dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
+            var targetUrls = dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
             if (targetUrls.Count == 0)
             {
                 targetUrls.Add("https://www.sankei.com/");
@@ -74,8 +124,8 @@ namespace Ribbon.WebCrawler
                     targetUrls = this.focusedDomains.ToList();
                 }
 
-                var dbTask = UpdateDatabase(downloadResult);
-                var loadTask = LoadWebAndAnalyze(targetUrls);
+                var dbTask = UpdateDatabase(downloadResult, dbAcccessor);
+                var loadTask = LoadWebAndAnalyze(targetUrls, morphAnalyzer, nGramStore, splitAtSentenceBreak);
 
                 Task.WhenAll(loadTask, dbTask).GetAwaiter().GetResult();
 
@@ -84,78 +134,49 @@ namespace Ribbon.WebCrawler
             }
         }
 
-        Task<DownloadTaskResult> LoadWebAndAnalyze(List<string> targetUrls)
+        Task<DownloadTaskResult> LoadWebAndGzip(List<string> targetUrls, CompressedStreamWriter writer, bool splitAtSentenceBreak)
         {
             return Task<DownloadTaskResult>.Run(() =>
             {
                 var startTime = DateTime.Now;
 
-                List<Task<HtmlGetter>> tasks = targetUrls.Select(url =>
-                    Task<HtmlGetter>.Run(() =>
-                    {
-                        Console.WriteLine("Loading: " + url);
-                        var webContent = new HtmlGetter(url);
-                        webContent.DoProcess();
-                        return webContent;
-                    })
-                ).ToList();
+                var thisResult = this.ParallelDownloadAndUnify(targetUrls, splitAtSentenceBreak);
 
-                Task.WhenAll(tasks).Wait();
-
-                Console.WriteLine("Concat all result");
-
-                DownloadTaskResult thisResult = new DownloadTaskResult();
-
-                foreach (var task in tasks)
+                foreach (var sentence in thisResult.contentTexts)
                 {
-                    var result = task.Result;
-                    thisResult.contentTexts.UnionWith(result.JpnTextSet);
-                    thisResult.referenceUrls.UnionWith(result.AnchorHrefs);
-                    thisResult.pageUrls.UnionWith(result.PageUrls);
+                    writer.WriteLine(sentence);
                 }
 
-                var rawContentCount = thisResult.contentTexts.Count;
-                foreach (var contentText in thisResult.contentTexts.ToArray())
-                {
-                    if (this.contentHistoryDate.ContainsKey(contentText))
-                    {
-                        this.contentHistoryDate[contentText] = DateTime.Now;
-                        thisResult.contentTexts.Remove(contentText);
-                    }
-                    else
-                    {
-                        this.contentHistoryDate.Add(contentText, DateTime.Now);
-                    }
-                }
-                if (this.contentHistoryDate.Count > maxCotentHistory)
-                {
-                    var removeCount = this.contentHistoryDate.Count - maxCotentHistory;
-                    var removeList = this.contentHistoryDate.OrderBy(kv => kv.Value).Take(removeCount).Select(kv => kv.Key).ToArray();
-                    foreach (var key in removeList)
-                    {
-                        this.contentHistoryDate.Remove(key);
-                    }
-                }
+                Console.WriteLine($"End: LoadWebAndAnalyze, elapsed: {(DateTime.Now - startTime).TotalSeconds} sec");
+                return thisResult;
+            });
+        }
 
-                Console.WriteLine($"Analyze Japanese Text, raw:{rawContentCount} => uniq:{thisResult.contentTexts.Count}");
+        Task<DownloadTaskResult> LoadWebAndAnalyze(List<string> targetUrls, MorphAnalyzer morphAnalyzer, NGramStore nGramStore, bool splitAtSentenceBreak)
+        {
+            return Task<DownloadTaskResult>.Run(() =>
+            {
+                var startTime = DateTime.Now;
 
-                var morphListList = m_morphAnalyzer.Run(thisResult.contentTexts);
+                var thisResult = this.ParallelDownloadAndUnify(targetUrls, splitAtSentenceBreak);
+
+                var morphListList = morphAnalyzer.Run(thisResult.contentTexts);
 
                 Console.WriteLine("Store Ngram");
                 foreach (var morphList in morphListList)
                 {
-                    m_nGraphStore.AddFromWordArray(morphList);
+                    nGramStore.AddFromWordArray(morphList);
                 }
-                m_nGraphStore.PrintCurrentState();
+                nGramStore.PrintCurrentState();
 
                 //
-                if (m_nGraphStore.CanSave())
+                if (nGramStore.CanSave())
                 {
-                    if (m_nGraphStore.ShouldFlush())
+                    if (nGramStore.ShouldFlush())
                     {
                         this.lastSavedTime = DateTime.Now;
-                        m_nGraphStore.SaveFile(2);
-                        m_nGraphStore.LoadFromFile();
+                        nGramStore.SaveFile(2);
+                        nGramStore.LoadFromFile();
                         Shared.FileOperation.RunPostProcessor();
                     }
                     else
@@ -163,32 +184,85 @@ namespace Ribbon.WebCrawler
                         var passedTime = DateTime.Now - this.lastSavedTime;
                         if (passedTime.TotalMinutes >= (new TimeSpan(exitIntervalHour, 0, 0)).TotalMinutes)
                         {
-                            m_nGraphStore.SaveFile();
+                            nGramStore.SaveFile();
                             Shared.FileOperation.RunPostProcessor();
                             this.exitProgram = true;
                         }
                         else if (passedTime.TotalMinutes >= (new TimeSpan(saveInternvalHour, 0, 0)).TotalMinutes)
                         {
                             this.lastSavedTime = DateTime.Now;
-                            m_nGraphStore.SaveFile();
+                            nGramStore.SaveFile();
                             Shared.FileOperation.RunPostProcessor();
                         }
                         else if (this.isEveryHourMode && passedTime.TotalMinutes >= (new TimeSpan(1, 0, 0)).TotalMinutes)
                         {
                             this.isEveryHourMode = ((DateTime.Now - this.programStartTime).TotalMinutes < (new TimeSpan(saveInternvalHour, 0, 0)).TotalMinutes);
                             this.lastSavedTime = DateTime.Now;
-                            m_nGraphStore.SaveFile();
+                            nGramStore.SaveFile();
                             Shared.FileOperation.RunPostProcessor();
                         }
                     }
                 }
-                var filledRate = m_nGraphStore.ContentFilledRate();
+                var filledRate = nGramStore.ContentFilledRate();
                 Console.WriteLine($"End: LoadWebAndAnalyze, elapsed: {(DateTime.Now - startTime).TotalSeconds} sec, filledRate: {filledRate}, lastSaveTime: {this.lastSavedTime.Hour}:{this.lastSavedTime.Minute}");
                 return thisResult;
             });
         }
 
-        Task<List<string>> UpdateDatabase(DownloadTaskResult prevResult)
+        DownloadTaskResult ParallelDownloadAndUnify(List<string> targetUrls, bool splitAtSentenceBreak)
+        {
+            List<Task<HtmlGetter>> tasks = targetUrls.Select(url =>
+                Task<HtmlGetter>.Run(() =>
+                {
+                    Console.WriteLine("Loading: " + url);
+                    var webContent = new HtmlGetter(url);
+                    webContent.DoProcess(splitAtSentenceBreak);
+                    return webContent;
+                })
+            ).ToList();
+
+            Task.WhenAll(tasks).Wait();
+
+            DownloadTaskResult thisResult = new DownloadTaskResult();
+
+            foreach (var task in tasks)
+            {
+                var result = task.Result;
+                thisResult.contentTexts.UnionWith(result.JpnTextSet);
+                thisResult.referenceUrls.UnionWith(result.AnchorHrefs);
+                thisResult.pageUrls.UnionWith(result.PageUrls);
+            }
+
+            var rawContentCount = thisResult.contentTexts.Count;
+            foreach (var contentText in thisResult.contentTexts.ToArray())
+            {
+                if (this.contentHistoryDate.ContainsKey(contentText))
+                {
+                    this.contentHistoryDate[contentText] = DateTime.Now;
+                    thisResult.contentTexts.Remove(contentText);
+                }
+                else
+                {
+                    this.contentHistoryDate.Add(contentText, DateTime.Now);
+                }
+            }
+            if (this.contentHistoryDate.Count > maxCotentHistory)
+            {
+                var removeCount = this.contentHistoryDate.Count - maxCotentHistory;
+                var removeList = this.contentHistoryDate.OrderBy(kv => kv.Value).Take(removeCount).Select(kv => kv.Key).ToArray();
+                foreach (var key in removeList)
+                {
+                    this.contentHistoryDate.Remove(key);
+                }
+            }
+
+            Console.WriteLine($"Gottext, raw:{rawContentCount} => uniq:{thisResult.contentTexts.Count}");
+
+            return thisResult;
+        }
+
+
+        Task<List<string>> UpdateDatabase(DownloadTaskResult prevResult, DbAcccessor dbAcccessor)
         {
             return Task<List<string>>.Run(() =>
             {
@@ -203,23 +277,23 @@ namespace Ribbon.WebCrawler
                     var arrayedSourceUrls = prevResult.referenceUrls.ToArray();
                     addingUrls = new HashSet<string>();
 
-                    int [] indexArray = new int[prevResult.referenceUrls.Count];
+                    int[] indexArray = new int[prevResult.referenceUrls.Count];
                     for (int i = 0; i < prevResult.referenceUrls.Count; ++i) indexArray[i] = i;
                     for (int i = 0; i < Constants.maxUrlsToAddOnceTime; ++i)
                     {
                         int swapTarget = this.random.Next(i, prevResult.referenceUrls.Count);
-                        int x = indexArray[swapTarget];
-                        indexArray[swapTarget] = indexArray[i];
-                        indexArray[i] = x;
-                        addingUrls.Add(arrayedSourceUrls[x]);
+                        var swapTuple = new Tuple<int, int>(indexArray[i], indexArray[swapTarget]);
+                        indexArray[i] = swapTuple.Item2;
+                        indexArray[swapTarget] = swapTuple.Item1;
+                        addingUrls.Add(arrayedSourceUrls[swapTuple.Item2]);
                     }
                 }
 
-                m_dbAcccessor.StoreUrlsAndMarkRead(addingUrls, prevResult.pageUrls);
+                dbAcccessor.StoreUrlsAndMarkRead(addingUrls, prevResult.pageUrls);
 
                 var updateFinishTime = DateTime.Now;
 
-                var targetUrls = m_dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
+                var targetUrls = dbAcccessor.PickupUrls(parallelDownload, this.focusedDomains);
 
                 Console.WriteLine($"<<< End Update:{(updateFinishTime - startTime).TotalSeconds}, Pickup:{(DateTime.Now - updateFinishTime).TotalSeconds}, Store URLs: {prevResult.referenceUrls.Count}, Mark URLs: {prevResult.pageUrls.Count}");
 
