@@ -102,7 +102,7 @@ namespace Ribbon.WebCrawler
 
         void Run()
         {
-            Shared.MorphAnalyzer morphAnalyzer = new Shared.MorphAnalyzer(Constants.workingFolder);
+            Shared.MorphAnalyzer morphAnalyzer = new Shared.MorphAnalyzer();
             Shared.NGramStore nGramStore = new Shared.NGramStore(Constants.workingFolder);
             DbAcccessor dbAcccessor = new DbAcccessor(Constants.workingFolder);
 

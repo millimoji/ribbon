@@ -374,12 +374,12 @@ namespace Ribbon.Shared
         TextNormalizer normalizer = new TextNormalizer();
         NumberConverter numberConverter = new NumberConverter();
 
-        public MorphAnalyzer(string workingFolder)
+        public MorphAnalyzer()
         {
             this.SetupNormalizeData();
         }
 
-        public List<List<string>> Run(HashSet<string> srcText)
+        public Tuple<System.Diagnostics.Process, System.IO.StreamWriter> PrepareProcess()
         {
             string parameters = string.Format("--input-buffer-size={0}", 0x8000);
             System.Diagnostics.ProcessStartInfo processStart = new System.Diagnostics.ProcessStartInfo(Constants.mecabExe, parameters);
@@ -390,31 +390,48 @@ namespace Ribbon.Shared
             processStart.CreateNoWindow = true;
             processStart.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
 
-            var documents = new List<List<string>>();
+            var pr = System.Diagnostics.Process.Start(processStart);
+            var sw = new StreamWriter(pr.StandardInput.BaseStream, System.Text.Encoding.UTF8);
+            return new Tuple<System.Diagnostics.Process, System.IO.StreamWriter>(pr, sw);
+        }
 
-            using (System.Diagnostics.Process p = System.Diagnostics.Process.Start(processStart))
+        public List<string> AnalyzeSingletext(System.Diagnostics.Process pr, System.IO.StreamWriter wr, string source)
+        {
+            var newText = this.normalizer.NormalizeInput(source);
+            if (newText == null)
             {
-                using (var sw = new StreamWriter(p.StandardInput.BaseStream, System.Text.Encoding.UTF8))
-                {
-                    foreach (var text in srcText)
-                    {
-                        var newText = this.normalizer.NormalizeInput(text);
-                        if (newText == null)
-                        {
-                            continue;
-                        }
-                        sw.WriteLine(newText);
-                        sw.Flush();
-
-                        var statement = ReadOutputStream(p.StandardOutput);
-                        this.numberConverter.Convert(statement);
-
-                        documents.Add(statement);
-                    }
-                    sw.Close();
-                    p.StandardOutput.Close();
-                }
+                return null;
             }
+            wr.WriteLine(newText);
+            wr.Flush();
+
+            var statement = ReadOutputStream(pr.StandardOutput);
+            this.numberConverter.Convert(statement);
+
+            return statement;
+        }
+
+        public void CloseProcess(System.Diagnostics.Process pr, System.IO.StreamWriter wr)
+        {
+            wr.Close();
+            pr.StandardOutput.Close();
+
+            wr.Dispose();
+            pr.Dispose();
+        }
+
+        public List<List<string>> Run(HashSet<string> srcText)
+        {
+            var documents = new List<List<string>>();
+            var prSw = PrepareProcess();
+
+            foreach (var text in srcText)
+            {
+                var statement = this.AnalyzeSingletext(prSw.Item1, prSw.Item2, text);
+                documents.Add(statement);
+            }
+
+            this.CloseProcess(prSw.Item1, prSw.Item2);
             return documents;
         }
 

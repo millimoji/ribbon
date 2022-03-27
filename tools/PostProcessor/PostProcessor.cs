@@ -10,6 +10,9 @@ namespace Ribbon.PostProcessor
     {
         public void Run()
         {
+#if true
+            this.BuildNgram();
+#else
             var targetFiles = new string []
             {
                 Constants.topicModelSummaryFilename,
@@ -32,6 +35,37 @@ namespace Ribbon.PostProcessor
             this.SummarizeTopicModel(nGramStore);
 
             Shared.FileOperation.Upload();
+#endif
+        }
+
+        void BuildNgram()
+        {
+            var morphAnalyzer = new Shared.MorphAnalyzer();
+            var prSw = morphAnalyzer.PrepareProcess();
+
+            try
+            {
+                var sourceFiles = Shared.CompressedFileSet.getNewerFiles(1);
+                foreach (var sourceFile in sourceFiles)
+                {
+                    using (var decompressor = new Shared.CompressedStreamReader(sourceFile))
+                    {
+                        for (; ; )
+                        {
+                            var sourceText = decompressor.ReadLine();
+                            if (sourceText.Length == 0)
+                            {
+                                break;
+                            }
+                            var morph = morphAnalyzer.AnalyzeSingletext(prSw.Item1, prSw.Item2, sourceText);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                morphAnalyzer.CloseProcess(prSw.Item1, prSw.Item2);
+            }
         }
 
         void FindPhraseAndSave(Shared.NGramStore nGramStore, long [] totalCounts)
