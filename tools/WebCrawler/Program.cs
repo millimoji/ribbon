@@ -34,7 +34,7 @@ namespace Ribbon.WebCrawler
         private bool isEveryHourMode = false; // disabled fo rnow
         private bool exitProgram = false;
 
-        const int maxCotentHistory = 20000;
+        const int maxCotentHistory = 40000;
         readonly Dictionary<string, DateTime> contentHistoryDate = new Dictionary<string, DateTime>();
 
         private readonly string[] focusedDomains = new string[]
