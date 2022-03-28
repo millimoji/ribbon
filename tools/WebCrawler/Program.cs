@@ -62,7 +62,7 @@ namespace Ribbon.WebCrawler
             DbAcccessor dbAcccessor = new DbAcccessor(Constants.workingFolder);
 
             var now = DateTime.Now;
-            var gZipFileName = now.Year.ToString() + now.Month.ToString("D2") + now.Day.ToString("D2") + "-" + now.Hour.ToString("D2") + ".txt.gz";
+            var gZipFileName = now.Year.ToString() + now.Month.ToString("D2") + now.Day.ToString("D2") + "-" + now.Hour.ToString("D2") + now.Minute.ToString("D2") + ".txt.gz";
 
             using (var gZipWriter = new CompressedStreamWriter(Constants.workingFolder + gZipFileName))
             {
@@ -73,7 +73,7 @@ namespace Ribbon.WebCrawler
                     targetUrls.Add("https://www.sankei.com/");
                 }
 
-                var lastSavedTime = DateTime.Now;
+                var lastCheckedTime = DateTime.Now;
 
                 while (!exitProgram)
                 {
@@ -91,10 +91,11 @@ namespace Ribbon.WebCrawler
                     targetUrls = dbTask.Result;
 
                     var currentTime = DateTime.Now;
-                    if (exitHour.Any(x => (lastSavedTime.Hour < x && x <= currentTime.Hour))) // Asssuming 1 loop should less than 1 hour
+                    if (exitHour.Any(x => (lastCheckedTime.Hour < x && x <= lastCheckedTime.Hour))) // Asssuming 1 loop should less than 1 hour
                     {
                         exitProgram = true;
                     }
+                    lastCheckedTime = currentTime;
                 }
             }
         }
@@ -103,7 +104,7 @@ namespace Ribbon.WebCrawler
         void Run()
         {
             Shared.MorphAnalyzer morphAnalyzer = new Shared.MorphAnalyzer();
-            Shared.NGramStore nGramStore = new Shared.NGramStore(Constants.workingFolder);
+            Shared.NGramStore nGramStore = new Shared.NGramStore(Constants.workingFolder, true /* with Topic Model */);
             DbAcccessor dbAcccessor = new DbAcccessor(Constants.workingFolder);
 
             const bool splitAtSentenceBreak = true;

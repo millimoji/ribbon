@@ -10,13 +10,11 @@ namespace Ribbon.PostProcessor
     {
         public void Run()
         {
-#if true
-            this.BuildNgram();
-#else
-            var targetFiles = new string []
+            var nGramStore = new Shared.NGramStore(Constants.workingFolder, false);
+            this.BuildNgram(nGramStore);
+
+            var targetFiles = new string[]
             {
-                Constants.topicModelSummaryFilename,
-                Constants.mixUnigramSummaryFilename,
                 Constants.phraseList,
                 Constants.phraseListSummary,
                 Constants.phraseListSummaryDiff,
@@ -24,25 +22,28 @@ namespace Ribbon.PostProcessor
             };
             Shared.FileOperation.SlideDataFile(targetFiles, Constants.workingFolder);
 
-            var nGramStore = new Shared.NGramStore(Constants.workingFolder);
-            var totalCounts = nGramStore.LoadFromFile(10 /* cutout */);
+            var nGramSourceCounts = nGramStore.GetNGramSourceCounts();
+
+            var phraseFinder = new PhraseFinder(10 /* cutout */);
+            var phraseSummary = phraseFinder.FindAndSave(Constants.workingFolder + Constants.phraseList, Constants.workingFolder + Constants.phraseListSummary, nGramStore, nGramSourceCounts);
+
+            var phraseDiffMaker = new PhraseDiffMaker(Constants.workingFolder);
+            phraseDiffMaker.MakeDiff(phraseSummary);
 
             var posListMaker = new PosListMaker(Constants.workingFolder);
             posListMaker.OutputPosBigram(nGramStore);
 
-            this.FindPhraseAndSave(nGramStore, totalCounts);
-
-            this.SummarizeTopicModel(nGramStore);
+            // this.SummarizeTopicModel(nGramStore);
 
             Shared.FileOperation.Upload();
-#endif
         }
 
-        void BuildNgram()
+        void BuildNgram(Shared.NGramStore nGramStore)
         {
             var morphAnalyzer = new Shared.MorphAnalyzer();
             var prSw = morphAnalyzer.PrepareProcess();
 
+            long stateCount = 0;
             try
             {
                 var sourceFiles = Shared.CompressedFileSet.getNewerFiles(1);
@@ -58,9 +59,20 @@ namespace Ribbon.PostProcessor
                                 break;
                             }
                             var morph = morphAnalyzer.AnalyzeSingletext(prSw.Item1, prSw.Item2, sourceText);
+                            if (morph != null)
+                            {
+                                nGramStore.AddFromWordArray(morph);
+                            }
+
+                            ++stateCount;
+                            if ((stateCount % 20000) == 0)
+                            {
+                                Console.WriteLine($"Current state count: {stateCount}");
+                            }
                         }
                     }
                 }
+                Console.WriteLine($"Total state count: {stateCount}");
             }
             finally
             {
@@ -68,9 +80,10 @@ namespace Ribbon.PostProcessor
             }
         }
 
+#if false
         void FindPhraseAndSave(Shared.NGramStore nGramStore, long [] totalCounts)
         {
-            var phraseFinder = new PhraseFinder();
+            var phraseFinder = new PhraseFinder(0);
             var newSummary = phraseFinder.FindAndSave(Constants.workingFolder + Constants.phraseList, Constants.workingFolder + Constants.phraseListSummary, nGramStore, totalCounts);
 
             var phraseDiffMaker = new PhraseDiffMaker(Constants.workingFolder);
@@ -91,5 +104,6 @@ namespace Ribbon.PostProcessor
             topicModelSummarizer.MakeSumarize(Constants.workingFolder + Constants.topicModelSummaryFilename, topicModelHandler, wordIdMapper.Item1);
             topicModelSummarizer.MakeSumarize(Constants.workingFolder + Constants.mixUnigramSummaryFilename, mixedUnigramHandler, wordIdMapper.Item1);
         }
+#endif
     }
 }

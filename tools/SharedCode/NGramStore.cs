@@ -24,7 +24,7 @@ namespace Ribbon.Shared
             new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
             new Dictionary<Tuple<int, int, int, int, int, int, int>, long>(),
         };
-        Dictionary<Tuple<string, string>, long> m_posBigram;
+        Dictionary<Tuple<string, string>, long> m_posBigram = new Dictionary<Tuple<string, string>, long>();
 
         const int thresholdToDiv2 = 8000000; // n7gram max
         const string BOS = "[BOS]";
@@ -40,8 +40,9 @@ namespace Ribbon.Shared
         readonly string[] fileNames = new string[] { unigramFileName, bigramFileName, trigramFileName, n4gramFileName, n5gramFileName, n6gramFileName, n7gramFileName, posBigramFilename,
             Constants.topicModelFileName, Constants.topicModelSummaryFilename, Constants.mixUnigramlFileName, Constants.mixUnigramSummaryFilename };
 
-        TopicModelHandler m_topicModel;
-        TopicModelHandler m_mixUnigram;
+        bool m_withTopicModel;
+        TopicModelHandler m_topicModel = null;
+        TopicModelHandler m_mixUnigram = null;
         string m_workDir;
 
         public string DateTimeString()
@@ -49,11 +50,14 @@ namespace Ribbon.Shared
             return DateTime.Now.ToString().Replace(' ', '-').Replace('/', '-').Replace(':', '-');
         }
 
-        public NGramStore(string workDir)
+        public NGramStore(string workDir, bool withTopicModel)
         {
             m_workDir = workDir;
-            m_topicModel = new TopicModelHandler(false /* isMixUnigram */);
-            m_mixUnigram = new TopicModelHandler(true /* isMixUnigram */);
+            if (this.m_withTopicModel = withTopicModel)
+            {
+                this.m_topicModel = new TopicModelHandler(false /* isMixUnigram */);
+                this.m_mixUnigram = new TopicModelHandler(true /* isMixUnigram */);
+            }
         }
         public Dictionary<Tuple<int, int, int, int, int, int, int>, long>[] nGramList { get { return this.m_nGrams;  } }
         public Dictionary<Tuple<string, string>, long> posBigram { get { return m_posBigram; } }
@@ -70,7 +74,17 @@ namespace Ribbon.Shared
 
         public bool CanSave()
         {
-            return m_topicModel.CanSave(); // m_mixUnigram
+            return this.m_topicModel != null ? this.m_topicModel.CanSave() : true;
+        }
+
+        public long[] GetNGramSourceCounts()
+        {
+            var totalCounts = new long[Constants.maxNGram];
+            for (int i = 0; i < Constants.maxNGram; ++i)
+            {
+                totalCounts[i] = m_nGrams[i].Select(kv => kv.Value).Sum();
+            }
+            return totalCounts;
         }
 
         public void SaveFile(int divNum = 1)
@@ -129,8 +143,14 @@ namespace Ribbon.Shared
                 }
             }
 
-            m_topicModel.SaveToFile(m_workDir + Constants.topicModelFileName, m_workDir + Constants.topicModelSummaryFilename, (int id) => this.WordList[id]);
-            m_mixUnigram.SaveToFile(m_workDir + Constants.mixUnigramlFileName, m_workDir + Constants.mixUnigramSummaryFilename, (int id) => this.WordList[id]);
+            if (this.m_topicModel != null)
+            {
+                this.m_topicModel.SaveToFile(m_workDir + Constants.topicModelFileName, m_workDir + Constants.topicModelSummaryFilename, (int id) => this.WordList[id]);
+            }
+            if (this.m_mixUnigram != null)
+            {
+                this.m_mixUnigram.SaveToFile(m_workDir + Constants.mixUnigramlFileName, m_workDir + Constants.mixUnigramSummaryFilename, (int id) => this.WordList[id]);
+            }
         }
 
         public long [] LoadFromFile(int cutOut = 0)
@@ -218,13 +238,18 @@ namespace Ribbon.Shared
             }
             catch (Exception) { }
 
-            this.m_topicModel.LoadFromFile(this.m_workDir + Constants.topicModelFileName,
-                (string word) => this.WordToWordId(word, false),
-                (int id) => this.WordList[id]);
-            this.m_mixUnigram.LoadFromFile(this.m_workDir + Constants.mixUnigramlFileName,
-                (string word) => this.WordToWordId(word, false),
-                (int id) => this.WordList[id]);
-
+            if (this.m_topicModel != null)
+            {
+                this.m_topicModel.LoadFromFile(this.m_workDir + Constants.topicModelFileName,
+                    (string word) => this.WordToWordId(word, false),
+                    (int id) => this.WordList[id]);
+            }
+            if (this.m_mixUnigram != null)
+            {
+                this.m_mixUnigram.LoadFromFile(this.m_workDir + Constants.mixUnigramlFileName,
+                    (string word) => this.WordToWordId(word, false),
+                    (int id) => this.WordList[id]);
+            }
             return totalCounts;
         }
 
@@ -261,14 +286,26 @@ namespace Ribbon.Shared
 
             this.AddPosBigram(arrayOfWord);
 
-            m_topicModel.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
-            m_mixUnigram.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
+            if (this.m_topicModel != null)
+            {
+                this.m_topicModel.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
+            }
+            if (this.m_mixUnigram != null)
+            {
+                this.m_mixUnigram.LearnDocument(arrayOfWord, (string word) => this.WordToWordId(word, false));
+            }
         }
 
         public void PrintCurrentState()
         {
-            m_topicModel.PrintCurretState();
-            m_mixUnigram.PrintCurretState();
+            if (this.m_topicModel != null)
+            {
+                this.m_topicModel.PrintCurretState();
+            }
+            if (this.m_mixUnigram != null)
+            {
+                this.m_mixUnigram.PrintCurretState();
+            }
         }
 
         public Tuple<Func<int, string>, Func<string, int>> GetWordIdMapper()

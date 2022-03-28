@@ -58,11 +58,13 @@ namespace Ribbon.PostProcessor
         private WordTreeItem backward = new WordTreeItem(0);
         private int bosId;
         private int eosId;
+        private int cutoutCount = 0;
 
         private double log2;
 
-        public PhraseFinder()
+        public PhraseFinder(int cutoutCount)
         {
+            this.cutoutCount = cutoutCount;
             this.log2 = Math.Log(2.0);
         }
 
@@ -228,9 +230,13 @@ namespace Ribbon.PostProcessor
             for (int iGram = 0; iGram < nGramList.Length; ++iGram)
             {
                 var nGram = nGramList[iGram];
-                var totalCountsInDouble = totalCounts[iGram];
+                var totalCountsInDouble = (double)totalCounts[iGram];
                 foreach (var wordList in nGram)
                 {
+                    if (this.cutoutCount > 0 && wordList.Value < this.cutoutCount)
+                    {
+                        continue; // ignore small count words
+                    }
                     var intArray = new int[] { wordList.Key.Item1, wordList.Key.Item2, wordList.Key.Item3, wordList.Key.Item4, wordList.Key.Item5, wordList.Key.Item6, wordList.Key.Item7 };
                     Array.Resize(ref intArray, iGram + 1);
                     var forwardItem = this.StoreWordRecv(this.forward, 0, iGram, intArray, wordList.Value, id2text, false);
