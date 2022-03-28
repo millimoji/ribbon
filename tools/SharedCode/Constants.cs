@@ -14,6 +14,7 @@ namespace Ribbon
         public const string mecabExe = "c:\\Program Files (x86)\\MeCab\\bin\\mecab.exe";
         public const string workingFolder = "c:\\lmworking\\";
         public const string logFile = "log.txt";
+        public const string stopFile = "stopfile";
         public const string ftpUploader = "..\\..\\..\\webui\\ftpupload.cmd";
         public const string postProcessor = "..\\..\\..\\PostProcessor\\bin\\Debug\\PostProcessor.exe";
 

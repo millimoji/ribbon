@@ -1,6 +1,7 @@
 ﻿using Ribbon.Shared;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Messaging;
@@ -96,6 +97,11 @@ namespace Ribbon.WebCrawler
                         exitProgram = true;
                     }
                     lastCheckedTime = currentTime;
+
+                    if (File.Exists(Constants.workingFolder + Constants.stopFile))
+                    {
+                        exitProgram = true;
+                    }
                 }
             }
         }
