@@ -11,6 +11,8 @@ call %SCRIPTDIR%mkmecab.cmd
 
 %WEBCRAWLEREXE%
 
+xcopy /E /D c:\lmworking\*.txt.gz \\ds918\backup\lmworking
+
 git pull
 msbuild.exe %SCRIPTDIR%..\RibbonTools.sln /t:rebuild /p:Configuration=Debug /p:Platform="Any CPU"
 call %SCRIPTDIR%mkmecab.cmd
