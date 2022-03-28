@@ -91,7 +91,7 @@ namespace Ribbon.WebCrawler
                     targetUrls = dbTask.Result;
 
                     var currentTime = DateTime.Now;
-                    if (exitHour.Any(x => (lastCheckedTime.Hour < x && x <= lastCheckedTime.Hour))) // Asssuming 1 loop should less than 1 hour
+                    if (exitHour.Any(x => (lastCheckedTime.Hour < x && x <= currentTime.Hour))) // Asssuming 1 loop should less than 1 hour
                     {
                         exitProgram = true;
                     }
