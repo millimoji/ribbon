@@ -50,13 +50,13 @@ namespace Ribbon.PostProcessor
 
         PhraseSummary ReadOldestPhrase()
         {
-            string tryFileName = this.workDir + Constants.old3prefix + Constants.phraseListSummary;
+            string tryFileName = this.workDir + Constants.old1prefix + Constants.phraseListSummary;
             if (!File.Exists(tryFileName))
             {
                 tryFileName = this.workDir + Constants.old2prefix + Constants.phraseListSummary;
                 if (!File.Exists(tryFileName))
                 {
-                    tryFileName = this.workDir + Constants.old1prefix + Constants.phraseListSummary;
+                    tryFileName = this.workDir + Constants.old3prefix + Constants.phraseListSummary;
                     if (!File.Exists(tryFileName))
                     {
                         return new PhraseSummary();
