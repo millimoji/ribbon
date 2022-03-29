@@ -307,6 +307,7 @@ namespace Ribbon.PostProcessor
                     entropyWork += prob * Math.Log(prob) / this.log2;
                 }
 
+#if false
                 var maxEntropy = -Math.Log(1.0 / (double)parent.children.Count) / this.log2;
 
                 if (maxEntropy == 0.0)
@@ -315,6 +316,9 @@ namespace Ribbon.PostProcessor
                 }
 
                 parent.entropy = -entropyWork / maxEntropy;
+#else
+                parent.entropy = -entropyWork;
+#endif
             }
 
             if (parent.children.Any(x => (x.Value.wordId == this.bosId) || (x.Value.wordId == this.eosId)))
