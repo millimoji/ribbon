@@ -46,7 +46,7 @@ namespace Ribbon.PostProcessor
             long stateCount = 0;
             try
             {
-                var sourceFiles = Shared.CompressedFileSet.getNewerFiles(1);
+                var sourceFiles = Shared.CompressedFileSet.getNewerFiles(2);
                 foreach (var sourceFile in sourceFiles)
                 {
                     using (var decompressor = new Shared.CompressedStreamReader(sourceFile))
