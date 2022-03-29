@@ -38,5 +38,6 @@ namespace Ribbon
         public const string summaryTypePosBigram = "posBigram";
 
         public const int maxUrlsToAddOnceTime = 100;
+        public const int maxTextLengthToAnalyze = 2000;
     }
 }

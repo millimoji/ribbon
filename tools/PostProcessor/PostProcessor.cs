@@ -58,10 +58,15 @@ namespace Ribbon.PostProcessor
                             {
                                 break;
                             }
-                            var morph = morphAnalyzer.AnalyzeSingletext(prSw.Item1, prSw.Item2, sourceText);
-                            if (morph != null)
+                            var splitText = Shared.TextNormalizer.SplitString(sourceText, Constants.maxTextLengthToAnalyze);
+
+                            foreach (var text in splitText)
                             {
-                                nGramStore.AddFromWordArray(morph);
+                                var morph = morphAnalyzer.AnalyzeSingletext(prSw.Item1, prSw.Item2, text);
+                                if (morph != null)
+                                {
+                                    nGramStore.AddFromWordArray(morph);
+                                }
                             }
 
                             ++stateCount;

@@ -702,6 +702,55 @@ namespace Ribbon.Shared
             return result;
         }
 
+        static public List<string> SplitString(string source, int maxLength)
+        {
+            var chopText = new List<string>();
+            chopText.Add(source);
+            while (chopText.Any(t => t.Length > maxLength))
+            {
+                for (int i = 0; i < chopText.Count; ++i)
+                {
+                    if (chopText[i].Length > maxLength)
+                    {
+                        var toBeHalf = SplitToHalf(chopText[i]);
+                        chopText.RemoveAt(i);
+                        chopText.InsertRange(i, toBeHalf);
+                        break;
+                    }
+                }
+            }
+            return chopText;
+        }
+
+        static readonly char[] separators = new char[] { '。', '、', '　' };
+
+        static private List<string> SplitToHalf(string source)
+        {
+            var startPos = new int[] { source.Length / 2, source.Length / 4, 0 };
+            foreach (var findStart in startPos)
+            {
+                foreach (var sepChar in separators)
+                {
+                    var sepPos = source.IndexOf(sepChar, findStart, source.Length * 4 / 5 - findStart);
+                    if (sepPos < 0)
+                    {
+                        continue;
+                    }
+                    var result = new List<string>();
+                    result.Add(source.Substring(0, sepPos + 1));
+                    result.Add(source.Substring(sepPos + 1));
+                    return result;
+                }
+            }
+            {
+                // forcibly chop to half
+                var result = new List<string>();
+                result.Add(source.Substring(0, startPos[0]));
+                result.Add(source.Substring(startPos[0]));
+                return result;
+            }
+        }
+
         static string[] ignoreSentenceCharList = new string[] { // consider these are in Chinese context
             "经", "网", "简", "舰",
         };
