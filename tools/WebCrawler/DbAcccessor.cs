@@ -63,7 +63,7 @@ namespace Ribbon.WebCrawler
         string connectionFullString = "";
         Random random = new System.Random();
 
-        readonly TimeSpan MinimumUpdateInterval = new TimeSpan(14, 0, 0, 0);
+        readonly TimeSpan MinimumUpdateInterval = new TimeSpan(28, 0, 0, 0);
 
         readonly HashSet<string> exceptedHosts = new HashSet<string>
         {
